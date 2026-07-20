@@ -1,0 +1,3663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TM Evolution ver.1.0</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Parisienne&display=swap" rel="stylesheet">
+
+  <!-- Excel読込用 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- グラフ描画用（BokehJS） -->
+  <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.9.1.min.js"></script>
+  <script src="https://cdn.bokeh.org/bokeh/release/bokeh-api-3.9.1.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3f5f8;
+      --card: #ffffff;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --line: #dbe2ea;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --danger: #b91c1c;
+      --ok: #047857;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP",
+                   "Yu Gothic", Meiryo, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    header {
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      color: white;
+      padding: 28px max(24px, calc((100vw - 1480px) / 2));
+    }
+    header h1 { margin: 0 0 8px; }
+    .brand-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-start;
+      gap: 14px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .brand-tm {
+      font-family: "Orbitron", sans-serif;
+      color: #f8fbff;
+      font-size: clamp(42px, 5vw, 64px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      text-shadow:
+        0 0 12px rgba(125, 211, 252, 0.22),
+        0 4px 18px rgba(0, 0, 0, 0.28);
+    }
+    .brand-evolution {
+      font-family: "Parisienne", cursive;
+      display: inline-block;
+      font-size: clamp(28px, 3.1vw, 44px);
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      transform: translateY(-4px) rotate(-2deg);
+      background: linear-gradient(
+        90deg,
+        rgba(254, 202, 202, 0.88) 0%,
+        rgba(254, 215, 170, 0.88) 16%,
+        rgba(254, 243, 199, 0.9) 32%,
+        rgba(187, 247, 208, 0.9) 48%,
+        rgba(186, 230, 253, 0.92) 64%,
+        rgba(199, 210, 254, 0.9) 80%,
+        rgba(233, 213, 255, 0.9) 100%
+      );
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: saturate(0.95) brightness(1.08);
+      text-shadow:
+        0 0 10px rgba(255, 255, 255, 0.10),
+        0 2px 18px rgba(255, 255, 255, 0.08);
+    }
+    .brand-version {
+      align-self: center;
+      margin-left: 2px;
+      padding: 4px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 999px;
+      color: rgba(255, 255, 255, 0.82);
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    @media (max-width: 560px) {
+      .brand-title { gap: 10px; }
+      .brand-evolution { letter-spacing: 0.07em; }
+    }
+    header p { margin: 0; opacity: 0.86; }
+    main {
+      width: min(1480px, calc(100% - 32px));
+      margin: 22px auto 48px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .card h2 { margin: 0 0 14px; font-size: 20px; }
+    .card h3 { margin: 0 0 10px; font-size: 16px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    @media (max-width: 980px) {
+      .span-3, .span-4, .span-6, .span-8 { grid-column: span 12; }
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      margin: 0 0 5px;
+    }
+    input[type="file"], input[type="number"], input[type="text"], select, button {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      padding: 8px 10px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+    button.secondary {
+      background: white;
+      color: var(--accent);
+    }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+    .status {
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+    .status.ok { color: var(--ok); background: #ecfdf5; border-color: #a7f3d0; }
+    .status.error { color: var(--danger); background: #fef2f2; border-color: #fecaca; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 900px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+    .metric .value { font-size: 22px; font-weight: 800; }
+    .metric .name { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .plot {
+      width: 100%;
+      min-height: 560px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .pca-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .pca-grid .plot { min-height: 480px; }
+    .ranking-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(340px, 1fr));
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .ranking-panel {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+    .ranking-panel .plot {
+      min-height: 470px;
+      margin-top: 10px;
+      background: white;
+    }
+    .ranking-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(145px, .72fr);
+      gap: 8px;
+      align-items: end;
+    }
+    @media (max-width: 520px) {
+      .ranking-controls { grid-template-columns: 1fr; }
+    }
+    .pca-axis-toolbar {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) 180px;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 1100px) {
+      .ranking-grid { grid-template-columns: repeat(3, minmax(340px, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .pca-axis-toolbar { grid-template-columns: 1fr; }
+    }
+    .component-names {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+    .component-name {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .component-references {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+    .component-reference {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: #f8fafc;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .component-reference strong { display: block; margin-bottom: 3px; }
+    .component-reference .positive { color: #1d4ed8; }
+    .component-reference .negative { color: #475569; }
+    .name-merge-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .name-merge-panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+    .name-list {
+      max-height: 410px;
+      overflow: auto;
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+    }
+    .name-list-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid #edf2f7;
+      cursor: pointer;
+    }
+    .name-list-row:last-child { border-bottom: 0; }
+    .name-list-row:hover { background: #eff6ff; }
+    .name-list-row input { width: 16px; height: 16px; margin: 0; }
+    .name-list-name { min-width: 0; overflow-wrap: anywhere; }
+    .name-list-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .name-alias {
+      display: block;
+      margin-top: 2px;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .merge-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 9px;
+    }
+    .merge-actions .wide { grid-column: 1 / -1; }
+    .merge-group {
+      border-top: 1px solid var(--line);
+      padding: 9px 0;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .merge-group:first-child { border-top: 0; }
+    .merge-group-head {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .merge-group button { width: auto; min-height: 30px; padding: 4px 9px; font-size: 11px; }
+    .merge-originals { color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+    @media (max-width: 900px) {
+      .component-references { grid-template-columns: 1fr; }
+      .name-merge-grid { grid-template-columns: 1fr; }
+    }
+    #crossTable td.cross-cell {
+      transition: filter .12s ease, outline-color .12s ease;
+      text-align: right;
+    }
+    #crossTable td.cross-cell[data-clickable="true"],
+    #crossPopupTable td.cross-cell[data-clickable="true"] {
+      cursor: pointer;
+      font-weight: 700;
+    }
+    #crossTable td.cross-cell[data-clickable="true"]:hover,
+    #crossPopupTable td.cross-cell[data-clickable="true"]:hover {
+      filter: brightness(.92);
+      outline: 2px solid #2563eb;
+      outline-offset: -2px;
+    }
+    #crossTable td.cross-cell[data-clickable="true"]:focus-visible,
+    #crossPopupTable td.cross-cell[data-clickable="true"]:focus-visible {
+      outline: 3px solid #1d4ed8;
+      outline-offset: -3px;
+    }
+    #crossTable td.cross-diagonal,
+    #crossPopupTable td.cross-diagonal {
+      background: #e5e7eb !important;
+      color: #475569 !important;
+    }
+    #crossPopupDialog {
+      width: min(1500px, calc(100vw - 20px));
+      max-height: calc(100vh - 20px);
+    }
+    #crossPopupTable {
+      max-height: calc(100vh - 145px);
+    }
+    @media (max-width: 1200px) {
+      .pca-grid { grid-template-columns: 1fr; }
+    }
+    .table-wrap {
+      overflow: auto;
+      max-height: 620px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: max-content;
+      min-width: 100%;
+      font-size: 12px;
+    }
+    th, td {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 7px 9px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #eff6ff;
+      font-weight: 800;
+    }
+    th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      text-align: left;
+    }
+    td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      text-align: left;
+      background: white;
+      font-weight: 700;
+    }
+    tr:last-child td { font-weight: 800; background: #f8fafc; }
+    .hidden { display: none !important; }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: end;
+      flex-wrap: wrap;
+    }
+    .toolbar > div { min-width: 150px; flex: 1; }
+    .toolbar .button-box { flex: 0 0 160px; }
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+    .note {
+      border-left: 4px solid #60a5fa;
+      padding: 9px 12px;
+      background: #eff6ff;
+      font-size: 12px;
+      line-height: 1.65;
+      margin-bottom: 12px;
+    }
+    .visual-select-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+    .visual-select-copy { min-width: 0; }
+    .visual-select-title { font-size: 12px; font-weight: 800; color: #334155; }
+    .visual-select-summary { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .visual-select-bar button { width: auto; min-width: 168px; }
+    .visual-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 4px;
+      border-radius: 10px;
+      background: #e2e8f0;
+    }
+    .visual-tab {
+      min-height: 38px;
+      border-color: transparent;
+      background: transparent;
+      color: #475569;
+    }
+    .visual-tab.active {
+      background: white;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .08);
+    }
+    .visual-selector-toolbar {
+      display: grid;
+      grid-template-columns: minmax(200px, 1fr) repeat(3, auto);
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 8px;
+    }
+    .visual-selector-toolbar button { width: auto; min-width: 116px; }
+    .visual-selection-list {
+      max-height: 430px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+    }
+    .visual-option-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      margin: 0;
+      padding: 9px 11px;
+      border-bottom: 1px solid #edf2f7;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .visual-option-row:last-child { border-bottom: 0; }
+    .visual-option-row:hover { background: #eff6ff; }
+    .visual-option-row input { width: 16px; height: 16px; margin: 0; }
+    .visual-option-name { min-width: 0; overflow-wrap: anywhere; }
+    .visual-option-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .visual-selector-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .visual-selector-footer button { width: auto; min-width: 120px; }
+    @media (max-width: 760px) {
+      .visual-select-bar { align-items: stretch; flex-direction: column; }
+      .visual-select-bar button { width: 100%; }
+      .visual-selector-toolbar { grid-template-columns: 1fr 1fr; }
+      .visual-selector-toolbar > div:first-child { grid-column: 1 / -1; }
+      .visual-selector-toolbar button { width: 100%; min-width: 0; }
+    }
+    dialog {
+      width: min(1180px, calc(100vw - 30px));
+      max-height: calc(100vh - 30px);
+      border: 0;
+      border-radius: 14px;
+      padding: 0;
+      box-shadow: 0 22px 80px rgba(0,0,0,.3);
+    }
+    dialog::backdrop { background: rgba(15, 23, 42, .55); }
+    .modal-head {
+      position: sticky;
+      top: 0;
+      background: white;
+      border-bottom: 1px solid var(--line);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+    }
+    .modal-head h3 { margin: 0; }
+    .modal-head button { width: auto; min-width: 90px; }
+    .modal-body { padding: 14px 18px 20px; overflow: auto; }
+    .detail-table td, .detail-table th { text-align: left; white-space: normal; vertical-align: top; }
+    .detail-table th:first-child, .detail-table td:first-child { position: static; }
+    a { color: #1d4ed8; }
+    .loading {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,.76);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      backdrop-filter: blur(2px);
+    }
+    @media (max-width: 768px), (pointer: coarse) {
+      #fileInput {
+        min-height: 48px;
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1 class="brand-title"><span class="brand-tm">TM</span><span class="brand-evolution">Evolution</span><span class="brand-version">ver.1.0</span></h1>
+  <p>CSVをブラウザ内で分析し、出願人ランキング・増減率・対応分析・クロス集計などを表示します。</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. データ読込</h2>
+    <div class="grid">
+      <div class="span-12">
+        <label for="fileInput">CSVファイル</label>
+        <input
+          id="fileInput"
+          type="file"
+          accept=".csv,text/csv,application/csv,text/comma-separated-values,application/vnd.ms-excel,application/octet-stream"
+          aria-describedby="mobileFileHelp"
+        />
+        <p id="mobileFileHelp" class="help">
+          J-PlatPatから出力したCSVデータは、加工せずそのまま読み込めます。選択したファイルは、このブラウザ内で処理されます。
+        </p>
+        <div class="note" style="margin-top:12px; margin-bottom:0;">
+          <strong>データの取り扱いについて</strong><br>
+          読み込んだCSVデータおよび分析結果は、お使いのブラウザ内で処理され、外部サーバーへ送信・保存されません。ただし、グラフの描画などに必要なプログラムの読み込みには、インターネット接続を使用します。<br>
+          社内の機密情報などを扱う場合は、所属組織の情報管理ルールをご確認ください。
+        </div>
+      </div>
+      <div class="span-12">
+        <div id="status" class="status">ファイルを選択してください。</div>
+      </div>
+    </div>
+    <p class="help">
+      必須列：出願番号/登録番号/国際登録番号、商標(検索用)、称呼基準、称呼(参考情報)、区分、
+      出願人/権利者/名義人、出願日/国際登録日(事後指定日)、登録日、ステータス、文献URL
+    </p>
+  </section>
+
+  <section id="summaryCard" class="card hidden">
+    <h2>データ概要</h2>
+    <div id="metrics" class="metrics"></div>
+  </section>
+
+  <section id="analysisControls" class="card hidden">
+    <h2>2. 分析条件</h2>
+    <div class="toolbar">
+      <div>
+        <label for="yearMin">出願年（開始）</label>
+        <select id="yearMin"></select>
+      </div>
+      <div>
+        <label for="yearMax">出願年（終了）</label>
+        <select id="yearMax"></select>
+      </div>
+      <div>
+        <label for="minApplicantCount">表示対象の最低件数</label>
+        <input id="minApplicantCount" type="number" min="1" value="1" />
+      </div>
+      <div>
+        <label for="maxApplicants">散布図の最大出願人数</label>
+        <input id="maxApplicants" type="number" min="5" max="1000" value="200" />
+      </div>
+      <div class="button-box">
+        <label>&nbsp;</label>
+        <button id="runBtn">分析を実行</button>
+      </div>
+    </div>
+    <p class="help">
+      出願年は「出願日/国際登録日(事後指定日)」の先頭4桁から生成します。
+      出願人が多い場合、散布図は件数上位から指定人数まで表示します。
+    </p>
+  </section>
+
+  <section id="nameMergeCard" class="card hidden">
+    <h2>出願人名寄せ（任意）</h2>
+    <div class="note">
+      表記ゆれのある出願人を選択し、統合後の名称を指定してください。名寄せは分析・クロス集計に反映され、元データの表示内容は保持されます。
+    </div>
+    <div class="name-merge-grid">
+      <div class="name-merge-panel">
+        <h3>出願人を選択</h3>
+        <div class="toolbar">
+          <div>
+            <label for="applicantSearch">名称検索</label>
+            <input id="applicantSearch" type="text" placeholder="名称の一部を入力" />
+          </div>
+          <div>
+            <label for="applicantSort">並び順</label>
+            <select id="applicantSort">
+              <option value="count">件数の多い順</option>
+              <option value="name">名称順</option>
+            </select>
+          </div>
+          <div class="button-box">
+            <label>&nbsp;</label>
+            <button id="selectSimilarBtn" class="secondary">表記ゆれ候補を選択</button>
+          </div>
+        </div>
+        <p id="applicantListInfo" class="help"></p>
+        <div id="applicantNameList" class="name-list"></div>
+      </div>
+      <div class="name-merge-panel">
+        <h3>選択した名称を統合</h3>
+        <label for="canonicalApplicantName">統合後の出願人名</label>
+        <input id="canonicalApplicantName" type="text" placeholder="代表名称を入力" />
+        <p id="selectedApplicantInfo" class="help">出願人を選択してください。</p>
+        <div class="merge-actions">
+          <button id="mergeSelectedBtn">選択名称を統合</button>
+          <button id="clearApplicantSelectionBtn" class="secondary">選択解除</button>
+          <button id="clearAllMergesBtn" class="secondary wide">すべての名寄せを解除</button>
+        </div>
+        <h3 style="margin-top:16px;">現在の名寄せ</h3>
+        <div id="mergeGroups" class="help">名寄せは設定されていません。</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="rankingCard" class="card hidden">
+    <h2>3. 出願人毎の区分ランキング（棒グラフ）</h2>
+    <div class="note">
+      出願件数上位3社を初期表示します。1類から45類までを0件の区分も含めて常に表示し、3グラフで同じ区分が同じ高さに並びます。
+      区分の並び順は3グラフで共通です。区分別件数を、2020年以前・2021–2023年・2024–2026年の3期間に分けて横向きに積み上げ表示します。
+      棒グラフをクリックすると、該当する期間・出願人・区分の案件を表示します。
+    </div>
+    <div class="ranking-grid">
+      <div class="ranking-panel">
+        <div class="ranking-controls">
+          <div>
+            <label for="rankingApplicant1">出願人 1</label>
+            <select id="rankingApplicant1"></select>
+          </div>
+          <div>
+            <label for="rankingSort1">区分の並び順</label>
+            <select id="rankingSort1">
+              <option value="count">件数の降順</option>
+              <option value="class">区分の昇順（1–45類）</option>
+            </select>
+          </div>
+        </div>
+        <div id="rankingPlot1" class="plot"></div>
+      </div>
+      <div class="ranking-panel">
+        <div class="ranking-controls">
+          <div>
+            <label for="rankingApplicant2">出願人 2</label>
+            <select id="rankingApplicant2"></select>
+          </div>
+          <div>
+            <label for="rankingSort2">区分の並び順</label>
+            <select id="rankingSort2">
+              <option value="count">件数の降順</option>
+              <option value="class">区分の昇順（1–45類）</option>
+            </select>
+          </div>
+        </div>
+        <div id="rankingPlot2" class="plot"></div>
+      </div>
+      <div class="ranking-panel">
+        <div class="ranking-controls">
+          <div>
+            <label for="rankingApplicant3">出願人 3</label>
+            <select id="rankingApplicant3"></select>
+          </div>
+          <div>
+            <label for="rankingSort3">区分の並び順</label>
+            <select id="rankingSort3">
+              <option value="count">件数の降順</option>
+              <option value="class">区分の昇順（1–45類）</option>
+            </select>
+          </div>
+        </div>
+        <div id="rankingPlot3" class="plot"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="caCard" class="card hidden">
+    <h2>4. 出願人と区分の関係をみる（コレスポンデンス分析/対応分析）</h2>
+    <div class="note">
+      出願人×区分の件数表を対象とし、出願人と区分を同一平面上に配置します。
+      出願人同士が近いほど区分構成が似ています。出願人点と区分点の単純な距離は、関連の強さを直接示すものではありません。
+      少数データによる不安定な配置を避けるため、初期設定では総件数5件未満、または出願人2者未満の区分を座標計算から除外します。
+    </div>
+    <div class="toolbar">
+      <div>
+        <label for="caMinClassCount">区分全体の最低件数</label>
+        <input id="caMinClassCount" type="number" min="1" value="5" />
+      </div>
+      <div>
+        <label for="caMinClassApplicants">区分を出願する最低出願人数</label>
+        <input id="caMinClassApplicants" type="number" min="1" value="2" />
+      </div>
+      <div class="button-box">
+        <label>&nbsp;</label>
+        <button id="caUpdateBtn">対応分析を更新</button>
+      </div>
+    </div>
+    <p id="caFilterInfo" class="help">分析実行後に、対象区分と除外区分を表示します。</p>
+    <div class="visual-select-bar">
+      <div class="visual-select-copy">
+        <div class="visual-select-title">可視化する情報</div>
+        <div id="caSelectionSummary" class="visual-select-summary">分析実行後に選択できます。</div>
+      </div>
+      <button type="button" class="secondary visual-select-open" data-visual-chart="ca">表示対象を選択</button>
+    </div>
+    <div id="caPlot" class="plot"></div>
+  </section>
+
+  <section id="bubbleCard" class="card hidden">
+    <h2>6. 出願件数増加率バブルチャート</h2>
+    <div class="note">
+      縦軸は2016–2020年から2021–2026年への短期増減率、横軸は2006–2015年から2016–2026年への長期増減率です。
+      期間の年数が異なるため、増減率は各期間の年平均出願件数を用いて算出します。円の大きさは2006–2026年の全体件数です。
+    </div>
+    <div class="visual-select-bar">
+      <div class="visual-select-copy">
+        <div class="visual-select-title">可視化する情報</div>
+        <div id="bubbleSelectionSummary" class="visual-select-summary">分析実行後に選択できます。</div>
+      </div>
+      <button type="button" class="secondary visual-select-open" data-visual-chart="bubble">表示対象を選択</button>
+    </div>
+    <div class="toolbar">
+      <div>
+        <label for="bubbleMode">表示単位</label>
+        <select id="bubbleMode">
+          <option value="class" selected>区分</option>
+          <option value="applicant">出願人</option>
+        </select>
+      </div>
+      <div>
+        <label for="bubbleFilter">出願人フィルター</label>
+        <input id="bubbleFilter" type="text" list="bubbleApplicantOptions" autocomplete="off" placeholder="出願人名の一部を入力" />
+        <datalist id="bubbleApplicantOptions"></datalist>
+      </div>
+      <div>
+        <label for="bubbleMinCount">最低全体件数</label>
+        <input id="bubbleMinCount" type="number" min="1" value="1" />
+      </div>
+      <div>
+        <label for="bubbleMaxItems">最大表示数</label>
+        <input id="bubbleMaxItems" type="number" min="10" max="1000" value="300" />
+      </div>
+      <div class="button-box">
+        <label>&nbsp;</label>
+        <button id="bubbleUpdateBtn">バブルチャートを更新</button>
+      </div>
+    </div>
+    <p id="bubbleInfo" class="help"></p>
+    <div id="bubblePlot" class="plot"></div>
+  </section>
+
+  <section id="crossCard" class="card hidden">
+    <h2>7. 可変クロス集計</h2>
+    <div class="visual-select-bar">
+      <div class="visual-select-copy">
+        <div class="visual-select-title">可視化する情報</div>
+        <div id="crossSelectionSummary" class="visual-select-summary">分析実行後に選択できます。</div>
+      </div>
+      <button type="button" class="secondary visual-select-open" data-visual-chart="cross">表示対象を選択</button>
+    </div>
+    <div class="toolbar">
+      <div>
+        <label for="rowAxis">行軸</label>
+        <select id="rowAxis">
+          <option value="applicant">出願人</option>
+          <option value="class">区分</option>
+          <option value="year">出願年</option>
+        </select>
+      </div>
+      <div>
+        <label for="colAxis">列軸</label>
+        <select id="colAxis">
+          <option value="class">区分</option>
+          <option value="applicant">出願人</option>
+          <option value="year">出願年</option>
+        </select>
+      </div>
+      <div>
+        <label for="crossTopN">各軸の最大表示数</label>
+        <input id="crossTopN" type="number" min="5" max="500" value="100" />
+      </div>
+      <div class="button-box">
+        <label>&nbsp;</label>
+        <button id="crossBtn">クロス集計を更新</button>
+      </div>
+      <div class="button-box">
+        <label>&nbsp;</label>
+        <button id="downloadCrossBtn" class="secondary">CSVダウンロード</button>
+      </div>
+      <div class="button-box">
+        <label>&nbsp;</label>
+        <button id="openCrossPopupBtn" class="secondary">拡大表示</button>
+      </div>
+      <div class="button-box">
+        <label>&nbsp;</label>
+        <button id="downloadCrossPngBtn" class="secondary">PNG画像出力</button>
+      </div>
+    </div>
+    <p id="crossInfo" class="help"></p>
+    <div id="crossTable" class="table-wrap"></div>
+  </section>
+</main>
+
+<dialog id="visualSelectionDialog">
+  <div class="modal-head">
+    <h3 id="visualSelectionTitle">表示対象を選択</h3>
+    <button id="closeVisualSelectionBtn" type="button" class="secondary">閉じる</button>
+  </div>
+  <div class="modal-body">
+    <div class="visual-tabs" role="tablist" aria-label="情報種別">
+      <button id="visualApplicantTab" type="button" class="visual-tab active" data-visual-type="applicant">出願人</button>
+      <button id="visualClassTab" type="button" class="visual-tab" data-visual-type="class">区分</button>
+    </div>
+    <div class="visual-selector-toolbar">
+      <div>
+        <label for="visualSelectionSearch">名称検索</label>
+        <input id="visualSelectionSearch" type="text" placeholder="名称の一部を入力" />
+      </div>
+      <button id="visualSelectFilteredBtn" type="button" class="secondary">検索結果を選択</button>
+      <button id="visualClearFilteredBtn" type="button" class="secondary">検索結果を解除</button>
+      <button id="visualSelectAllBtn" type="button" class="secondary">すべて選択</button>
+    </div>
+    <p id="visualSelectionInfo" class="help"></p>
+    <div id="visualSelectionList" class="visual-selection-list"></div>
+    <div class="visual-selector-footer">
+      <button id="visualClearAllBtn" type="button" class="secondary">すべて解除</button>
+      <button id="cancelVisualSelectionBtn" type="button" class="secondary">キャンセル</button>
+      <button id="applyVisualSelectionBtn" type="button">選択を適用</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="crossPopupDialog">
+  <div class="modal-head">
+    <h3 id="crossPopupTitle">可変クロス集計・拡大表示</h3>
+    <button id="closeCrossPopupBtn" type="button" class="secondary">閉じる</button>
+  </div>
+  <div class="modal-body">
+    <p id="crossPopupInfo" class="help"></p>
+    <div id="crossPopupTable" class="table-wrap"></div>
+  </div>
+</dialog>
+
+<dialog id="detailDialog">
+  <div class="modal-head">
+    <h3 id="detailTitle">詳細</h3>
+    <button id="closeDialogBtn" class="secondary">閉じる</button>
+  </div>
+  <div id="detailBody" class="modal-body"></div>
+</dialog>
+
+<div id="loading" class="loading hidden">処理中…</div>
+
+<script>
+"use strict";
+
+const REQUIRED = [
+  "出願番号/登録番号/国際登録番号",
+  "商標(検索用)",
+  "称呼基準",
+  "称呼(参考情報)",
+  "区分",
+  "出願人/権利者/名義人",
+  "出願日/国際登録日(事後指定日)",
+  "登録日",
+  "ステータス",
+  "文献URL"
+];
+
+const CLASS_LABELS = {
+  "1": "1類.化学品・工業薬品",
+  "2": "2類.塗料・着色料",
+  "3": "3類.化粧品・洗浄剤",
+  "4": "4類.燃料・工業用油",
+  "5": "5類.医薬品・衛生用品",
+  "6": "6類.金属・金属建材",
+  "7": "7類.機械・工作機械",
+  "8": "8類.手工具・刃物類",
+  "9": "9類.電子機器・ソフト",
+  "10": "10類.医療用機器",
+  "11": "11類.照明・加熱設備",
+  "12": "12類.乗物・輸送機器",
+  "13": "13類.銃砲・火薬類",
+  "14": "14類.宝飾品・時計",
+  "15": "15類.楽器・音楽器具",
+  "16": "16類.紙・文房具・印刷物",
+  "17": "17類.ゴム・絶縁材料",
+  "18": "18類.革製品・かばん",
+  "19": "19類.非金属建築材料",
+  "20": "20類.家具・鏡・額縁",
+  "21": "21類.台所用品・食器",
+  "22": "22類.ロープ・テント",
+  "23": "23類.糸・織物用糸",
+  "24": "24類.織物・寝具類",
+  "25": "25類.被服・履物・帽子",
+  "26": "26類.ボタン・装飾用品",
+  "27": "27類.敷物・壁紙",
+  "28": "28類.玩具・運動用品",
+  "29": "29類.肉・魚・乳製品",
+  "30": "30類.菓子・穀物・調味料",
+  "31": "31類.農産物・生鮮食品",
+  "32": "32類.ビール・清涼飲料",
+  "33": "33類.ビール以外の酒類",
+  "34": "34類.たばこ・喫煙具",
+  "35": "35類.広告・事業・小売",
+  "36": "36類.金融・保険・不動産",
+  "37": "37類.建設・修理・設置",
+  "38": "38類.通信・情報伝達",
+  "39": "39類.輸送・保管・旅行",
+  "40": "40類.材料加工・処理",
+  "41": "41類.教育・娯楽・スポーツ",
+  "42": "42類.科学技術・IT開発",
+  "43": "43類.飲食・宿泊サービス",
+  "44": "44類.医療・美容・農業",
+  "45": "45類.法務・警備・個人支援"
+};
+
+function classLabel(classNo) {
+  const key = String(Number(classNo));
+  return CLASS_LABELS[key] || `${key}類`;
+}
+
+const CHART_COLORS = Object.freeze({
+  applicant: "#2563eb",
+  goods: "#0ea5e9",
+  services: "#10b981",
+  applicantText: "#334155",
+  goodsText: "#0369a1",
+  servicesText: "#047857"
+});
+
+function createVisualSelectionGroup() {
+  return {
+    applicant: { selected: new Set(), initialized: false, customized: false },
+    class: { selected: new Set(), initialized: false, customized: false }
+  };
+}
+
+const state = {
+  workbook: null,
+  rows: [],
+  filteredRows: [],
+  crossData: null,
+  matrix: null,
+  applicantAliases: new Map(),
+  selectedApplicants: new Set(),
+  visualSelections: {
+    ca: createVisualSelectionGroup(),
+    pca: createVisualSelectionGroup(),
+    bubble: createVisualSelectionGroup(),
+    cross: createVisualSelectionGroup()
+  },
+  visualDialog: {
+    chart: null,
+    type: "applicant",
+    drafts: { applicant: new Set(), class: new Set() }
+  },
+  rankingSelections: ["", "", ""],
+  rankingSorts: ["count", "count", "count"],
+  rankingInitialized: false,
+  pcaResult: null
+};
+
+const $ = id => document.getElementById(id);
+
+const VISUAL_CHART_NAMES = {
+  ca: "コレスポンデンス分析",
+  pca: "主成分分析",
+  bubble: "出願件数増加率バブルチャート",
+  cross: "可変クロス集計"
+};
+
+function resetVisualSelections() {
+  for (const chart of Object.keys(state.visualSelections)) {
+    state.visualSelections[chart] = createVisualSelectionGroup();
+  }
+}
+
+function getVisualAvailableItems(chart, type) {
+  if (chart === "ca" || chart === "pca" || chart === "cross") {
+    if (!state.matrix) return [];
+
+    if (chart === "ca") {
+      const input = getCAAnalysisInputSafe(state.matrix);
+      if (!input) return [];
+      if (type === "applicant") {
+        return input.rowIndices.map(matrixRowIndex => {
+          const name = state.matrix.applicants[matrixRowIndex];
+          return {
+            key: name,
+            label: name,
+            count: state.matrix.applicantCounts.get(name) || 0
+          };
+        });
+      }
+      return input.eligibleClassStats.map(item => ({
+        key: item.key,
+        label: item.label,
+        count: item.total
+      })).sort((a, b) => Number(a.key) - Number(b.key));
+    }
+
+    if (type === "applicant") {
+      return state.matrix.applicants.map(name => ({
+        key: name,
+        label: name,
+        count: state.matrix.applicantCounts.get(name) || 0
+      }));
+    }
+    const classKeys = chart === "cross"
+      ? Array.from({ length: 45 }, (_, index) => String(index + 1))
+      : state.matrix.classes.map(String);
+    return classKeys.map(key => {
+      const colIndex = state.matrix.classes.map(String).indexOf(String(key));
+      return {
+        key: String(key),
+        label: classLabel(key),
+        count: colIndex >= 0
+          ? state.matrix.X.reduce((sum, row) => sum + (row[colIndex] || 0), 0)
+          : 0
+      };
+    }).sort((a, b) => Number(a.key) - Number(b.key));
+  }
+
+  if (chart === "bubble") {
+    const mode = type === "applicant" ? "applicant" : "class";
+    return buildBubbleMetrics(mode)
+      .filter(item => item.shortRate !== null && item.longRate !== null)
+      .map(item => ({ key: String(item.key), label: item.label, count: item.total }))
+      .sort(type === "class"
+        ? (a, b) => Number(a.key) - Number(b.key)
+        : (a, b) => b.count - a.count || a.label.localeCompare(b.label, "ja"));
+  }
+  return [];
+}
+
+function reconcileVisualSelection(chart, type) {
+  const model = state.visualSelections[chart][type];
+  const available = getVisualAvailableItems(chart, type);
+  const availableKeys = new Set(available.map(item => String(item.key)));
+  if (!model.initialized || !model.customized) {
+    model.selected = new Set(availableKeys);
+    model.initialized = true;
+  } else {
+    model.selected = new Set([...model.selected].filter(key => availableKeys.has(String(key))));
+  }
+  return available;
+}
+
+function syncVisualSelections() {
+  for (const chart of Object.keys(state.visualSelections)) {
+    reconcileVisualSelection(chart, "applicant");
+    reconcileVisualSelection(chart, "class");
+  }
+  updateAllVisualSelectionSummaries();
+}
+
+function getVisualSelectedSet(chart, type) {
+  reconcileVisualSelection(chart, type);
+  return state.visualSelections[chart][type].selected;
+}
+
+function updateVisualSelectionSummary(chart) {
+  const el = $(`${chart}SelectionSummary`);
+  if (!el) return;
+  if (!state.matrix) {
+    el.textContent = "分析実行後に選択できます。";
+    return;
+  }
+  const applicants = reconcileVisualSelection(chart, "applicant");
+  const classes = reconcileVisualSelection(chart, "class");
+  const applicantSet = state.visualSelections[chart].applicant.selected;
+  const classSet = state.visualSelections[chart].class.selected;
+  const applicantSelected = applicants.filter(item => applicantSet.has(String(item.key))).length;
+  const classSelected = classes.filter(item => classSet.has(String(item.key))).length;
+  if (chart === "pca") {
+    el.textContent = `出願人 ${applicantSelected.toLocaleString()}／${applicants.length.toLocaleString()}件をプロット・区分 ${classSelected.toLocaleString()}／${classes.length.toLocaleString()}件を解釈参考に使用`;
+  } else {
+    el.textContent = `出願人 ${applicantSelected.toLocaleString()}／${applicants.length.toLocaleString()}件・区分 ${classSelected.toLocaleString()}／${classes.length.toLocaleString()}件を表示`;
+  }
+}
+
+function updateAllVisualSelectionSummaries() {
+  ["ca", "pca", "bubble", "cross"].forEach(updateVisualSelectionSummary);
+}
+
+function visualDialogItems() {
+  const { chart, type } = state.visualDialog;
+  const query = $("visualSelectionSearch").value.trim().toLowerCase();
+  const tokens = query.split(/\s+/).filter(Boolean);
+  return getVisualAvailableItems(chart, type).filter(item => {
+    if (!tokens.length) return true;
+    const haystack = `${item.label} ${item.key}`.toLowerCase();
+    return tokens.every(token => haystack.includes(token));
+  });
+}
+
+function renderVisualSelectionDialog() {
+  const { chart, type, drafts } = state.visualDialog;
+  if (!chart) return;
+  $("visualSelectionTitle").textContent = `${VISUAL_CHART_NAMES[chart]}：表示対象を選択`;
+  $("visualApplicantTab").classList.toggle("active", type === "applicant");
+  $("visualClassTab").classList.toggle("active", type === "class");
+  $("visualSelectionSearch").placeholder = type === "applicant"
+    ? "出願人名の一部を入力"
+    : "区分番号・分野名の一部を入力";
+
+  const all = getVisualAvailableItems(chart, type);
+  const visible = visualDialogItems();
+  const draft = drafts[type];
+  const selectedCount = all.filter(item => draft.has(String(item.key))).length;
+  $("visualSelectionInfo").textContent =
+    `${all.length.toLocaleString()}項目中${selectedCount.toLocaleString()}項目を選択。検索結果 ${visible.length.toLocaleString()}項目。`;
+
+  if (!visible.length) {
+    $("visualSelectionList").innerHTML = '<div class="status">検索条件に一致する項目がありません。</div>';
+    return;
+  }
+  $("visualSelectionList").innerHTML = visible.map(item => {
+    const key = String(item.key);
+    return `<label class="visual-option-row">` +
+      `<input type="checkbox" data-visual-key="${escapeHtml(key)}" ${draft.has(key) ? "checked" : ""}>` +
+      `<span class="visual-option-name">${escapeHtml(item.label)}</span>` +
+      `<span class="visual-option-count">${Number(item.count || 0).toLocaleString()}件</span>` +
+      `</label>`;
+  }).join("");
+
+  $("visualSelectionList").querySelectorAll("input[data-visual-key]").forEach(input => {
+    input.addEventListener("change", () => {
+      const key = String(input.dataset.visualKey);
+      if (input.checked) draft.add(key);
+      else draft.delete(key);
+      renderVisualSelectionDialog();
+    });
+  });
+}
+
+function openVisualSelectionDialog(chart) {
+  if (!state.matrix) return;
+  reconcileVisualSelection(chart, "applicant");
+  reconcileVisualSelection(chart, "class");
+  state.visualDialog.chart = chart;
+  state.visualDialog.type = chart === "bubble" ? $("bubbleMode").value : "applicant";
+  state.visualDialog.drafts = {
+    applicant: new Set(state.visualSelections[chart].applicant.selected),
+    class: new Set(state.visualSelections[chart].class.selected)
+  };
+  $("visualSelectionSearch").value = "";
+  renderVisualSelectionDialog();
+  $("visualSelectionDialog").showModal();
+}
+
+function setVisualDialogType(type) {
+  state.visualDialog.type = type;
+  $("visualSelectionSearch").value = "";
+  renderVisualSelectionDialog();
+}
+
+function updateVisualDraftForItems(mode) {
+  const type = state.visualDialog.type;
+  const draft = state.visualDialog.drafts[type];
+  const items = mode === "all" ? getVisualAvailableItems(state.visualDialog.chart, type) : visualDialogItems();
+  if (mode === "clearAll") draft.clear();
+  else if (mode === "clearFiltered") items.forEach(item => draft.delete(String(item.key)));
+  else items.forEach(item => draft.add(String(item.key)));
+  renderVisualSelectionDialog();
+}
+
+function renderSelectedVisualChart(chart) {
+  if (!state.matrix) return;
+  if (chart === "ca") renderCA(state.matrix);
+  else if (chart === "pca") renderPCA(state.matrix);
+  else if (chart === "bubble") renderBubbleChart();
+  else if (chart === "cross") buildCrossTab();
+  updateVisualSelectionSummary(chart);
+}
+
+function applyVisualSelection() {
+  const chart = state.visualDialog.chart;
+  if (!chart) return;
+  for (const type of ["applicant", "class"]) {
+    const model = state.visualSelections[chart][type];
+    model.selected = new Set(state.visualDialog.drafts[type]);
+    model.initialized = true;
+    model.customized = true;
+  }
+  $("visualSelectionDialog").close();
+  renderSelectedVisualChart(chart);
+}
+
+function setLoading(on, text = "処理中…") {
+  $("loading").textContent = text;
+  $("loading").classList.toggle("hidden", !on);
+}
+
+function setStatus(message, type = "") {
+  const el = $("status");
+  el.textContent = message;
+  el.className = "status" + (type ? " " + type : "");
+}
+
+function cleanHeader(v) {
+  return String(v ?? "").replace(/^\uFEFF/, "").trim().replace(/\s+/g, "");
+}
+
+function cleanCell(v) {
+  if (v === null || v === undefined) return "";
+  if (v instanceof Date && !isNaN(v)) {
+    const y = v.getFullYear();
+    const m = String(v.getMonth() + 1).padStart(2, "0");
+    const d = String(v.getDate()).padStart(2, "0");
+    return `${y}/${m}/${d}`;
+  }
+  return String(v).trim();
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function safeUrl(url) {
+  const v = String(url || "").trim();
+  return /^https?:\/\//i.test(v) ? v : "";
+}
+
+function parseYear(dateValue) {
+  const s = String(dateValue || "").trim();
+  const m = s.match(/^(\d{4})/);
+  return m ? m[1] : "";
+}
+
+function parseClasses(value) {
+  const s = String(value || "");
+  const found = s.match(/\d{1,2}/g) || [];
+  const nums = found
+    .map(Number)
+    .filter(n => n >= 1 && n <= 45)
+    .map(n => String(n));
+  return [...new Set(nums)].sort((a, b) => Number(a) - Number(b));
+}
+
+function parseApplicants(value) {
+  const applicants = String(value || "")
+    .split(",")
+    .map(v => v.trim())
+    .filter(Boolean);
+  return applicants.length ? [...new Set(applicants)] : ["（出願人不明）"];
+}
+
+function getTrademarkNo(row) {
+  return row["出願番号/登録番号/国際登録番号"] ||
+    row["出願番号"] || row["登録番号"] || row["国際登録番号"] || "番号なし";
+}
+
+function getPronunciation(row) {
+  const a = row["称呼基準"];
+  const b = row["称呼(参考情報)"];
+  if (a && b && a !== b) return `${a} / ${b}`;
+  return a || b || "";
+}
+
+function detectDelimiter(text) {
+  const first = text.split(/\r?\n/).slice(0, 5).join("\n");
+  const candidates = [",", "\t", ";"];
+  let best = ",";
+  let bestCount = -1;
+  for (const d of candidates) {
+    const count = first.split(d).length - 1;
+    if (count > bestCount) { best = d; bestCount = count; }
+  }
+  return best;
+}
+
+function parseDelimited(text, delimiter) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          quoted = false;
+        }
+      } else {
+        cell += ch;
+      }
+    } else {
+      if (ch === '"') {
+        quoted = true;
+      } else if (ch === delimiter) {
+        row.push(cell);
+        cell = "";
+      } else if (ch === "\n") {
+        row.push(cell.replace(/\r$/, ""));
+        rows.push(row);
+        row = [];
+        cell = "";
+      } else {
+        cell += ch;
+      }
+    }
+  }
+  row.push(cell.replace(/\r$/, ""));
+  if (row.some(v => v !== "")) rows.push(row);
+  return rows;
+}
+
+function decodeCsv(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let utf8 = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  const badUtf8 = (utf8.match(/\uFFFD/g) || []).length;
+  if (badUtf8 > 0) {
+    try {
+      const sjis = new TextDecoder("shift_jis", { fatal: false }).decode(bytes);
+      const badSjis = (sjis.match(/\uFFFD/g) || []).length;
+      if (badSjis < badUtf8) return sjis;
+    } catch (_) {}
+  }
+  return utf8;
+}
+
+function arrayToObjects(data) {
+  if (!data.length) throw new Error("データが空です。");
+  const rawHeaders = data[0].map(cleanCell);
+  const normalized = rawHeaders.map(cleanHeader);
+  const requiredNormalized = new Map(REQUIRED.map(h => [cleanHeader(h), h]));
+  const indexMap = new Map();
+
+  normalized.forEach((h, i) => {
+    if (requiredNormalized.has(h)) indexMap.set(requiredNormalized.get(h), i);
+  });
+
+  const missing = REQUIRED.filter(h => !indexMap.has(h));
+  if (missing.length) {
+    throw new Error("必要な列が見つかりません：\n" + missing.join("、"));
+  }
+
+  const rows = [];
+  for (let r = 1; r < data.length; r++) {
+    const src = data[r];
+    if (!src || src.every(v => cleanCell(v) === "")) continue;
+    const obj = {};
+    for (const h of REQUIRED) obj[h] = cleanCell(src[indexMap.get(h)]);
+    obj.__year = parseYear(obj["出願日/国際登録日(事後指定日)"]);
+    obj.__classes = parseClasses(obj["区分"]);
+    obj.__applicant = obj["出願人/権利者/名義人"] || "（出願人不明）";
+    obj.__originalApplicants = parseApplicants(obj["出願人/権利者/名義人"]);
+    obj.__applicants = obj.__originalApplicants.slice();
+    obj.__id = rows.length;
+    rows.push(obj);
+  }
+  return rows;
+}
+
+async function readFile(file) {
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (ext !== "csv") {
+    throw new Error("CSVファイルを選択してください。");
+  }
+
+  const buffer = await file.arrayBuffer();
+  state.workbook = null;
+  const text = decodeCsv(buffer);
+  const delimiter = detectDelimiter(text);
+  const arr = parseDelimited(text, delimiter);
+  return arrayToObjects(arr);
+}
+
+function loadWorkbookSheet(sheetName) {
+  const ws = state.workbook.Sheets[sheetName];
+  const arr = XLSX.utils.sheet_to_json(ws, {
+    header: 1,
+    defval: "",
+    raw: false,
+    dateNF: "yyyy/mm/dd"
+  });
+  return arrayToObjects(arr);
+}
+
+function uniqueSorted(values, numeric = false) {
+  const arr = [...new Set(values.filter(v => v !== ""))];
+  return arr.sort(numeric ? (a, b) => Number(a) - Number(b) : (a, b) => String(a).localeCompare(String(b), "ja"));
+}
+
+function initializeYearControls() {
+  const years = uniqueSorted(state.rows.map(r => r.__year), true);
+  const min = $("yearMin");
+  const max = $("yearMax");
+  const options = years.map(y => `<option value="${y}">${y}</option>`).join("");
+  min.innerHTML = options;
+  max.innerHTML = options;
+  if (years.length) {
+    min.value = years[0];
+    max.value = years[years.length - 1];
+  } else {
+    min.innerHTML = '<option value="">年情報なし</option>';
+    max.innerHTML = '<option value="">年情報なし</option>';
+  }
+}
+
+function filterRows() {
+  const min = $("yearMin").value;
+  const max = $("yearMax").value;
+  state.filteredRows = state.rows.filter(r => {
+    if (!r.__year) return !min && !max;
+    return (!min || r.__year >= min) && (!max || r.__year <= max);
+  });
+}
+
+function normalizeApplicantForComparison(name) {
+  return String(name || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/株式会社|有限会社|合同会社|合資会社|合名会社|一般社団法人|一般財団法人|公益社団法人|公益財団法人|医療法人|学校法人|社会福祉法人|特定非営利活動法人|㈱|\(株\)|（株）|co\.?[,]?\s*ltd\.?|corporation|incorporated|limited|company/gi, "")
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+function levenshteinDistance(a, b) {
+  const x = [...a], y = [...b];
+  const prev = Array.from({ length: y.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= x.length; i++) {
+    let left = i;
+    let diagonal = i - 1;
+    for (let j = 1; j <= y.length; j++) {
+      const up = prev[j];
+      const cost = x[i - 1] === y[j - 1] ? 0 : 1;
+      const current = Math.min(up + 1, left + 1, diagonal + cost);
+      prev[j] = current;
+      diagonal = up;
+      left = current;
+    }
+  }
+  return prev[y.length];
+}
+
+function applicantSimilarity(a, b) {
+  const x = normalizeApplicantForComparison(a);
+  const y = normalizeApplicantForComparison(b);
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+  if (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x))) return 0.92;
+  return 1 - levenshteinDistance(x, y) / Math.max(x.length, y.length);
+}
+
+function applyApplicantAliases() {
+  for (const row of state.rows) {
+    row.__applicants = [...new Set(row.__originalApplicants.map(name =>
+      state.applicantAliases.get(name) || name
+    ))];
+  }
+  state.filteredRows = state.rows.slice();
+}
+
+function originalApplicantCounts() {
+  const counts = new Map();
+  for (const row of state.rows) {
+    for (const name of row.__originalApplicants) {
+      counts.set(name, (counts.get(name) || 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function resetApplicantMerges() {
+  state.applicantAliases = new Map();
+  state.selectedApplicants = new Set();
+  applyApplicantAliases();
+  if ($("applicantSearch")) $("applicantSearch").value = "";
+  if ($("canonicalApplicantName")) $("canonicalApplicantName").value = "";
+  renderApplicantMergeUI();
+}
+
+function renderApplicantMergeUI() {
+  if (!$("applicantNameList")) return;
+  const counts = originalApplicantCounts();
+  const query = $("applicantSearch").value.trim().toLowerCase();
+  const sortMode = $("applicantSort").value;
+  let items = [...counts.entries()].filter(([name]) =>
+    !query || name.toLowerCase().includes(query) ||
+    (state.applicantAliases.get(name) || "").toLowerCase().includes(query)
+  );
+  items.sort(sortMode === "name"
+    ? (a, b) => a[0].localeCompare(b[0], "ja")
+    : (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja")
+  );
+
+  const totalMatches = items.length;
+  items = items.slice(0, 500);
+  $("applicantListInfo").textContent =
+    `${totalMatches.toLocaleString()}件が該当${totalMatches > 500 ? "（先頭500件を表示）" : ""}。` +
+    ` 現在の選択：${state.selectedApplicants.size.toLocaleString()}件`;
+
+  $("applicantNameList").innerHTML = items.length ? items.map(([name, count]) => {
+    const checked = state.selectedApplicants.has(name) ? " checked" : "";
+    const canonical = state.applicantAliases.get(name);
+    return `<label class="name-list-row">` +
+      `<input type="checkbox" data-applicant-name="${escapeHtml(name)}"${checked}>` +
+      `<span class="name-list-name">${escapeHtml(name)}` +
+      `${canonical && canonical !== name ? `<span class="name-alias">→ ${escapeHtml(canonical)}</span>` : ""}</span>` +
+      `<span class="name-list-count">${count.toLocaleString()}件</span>` +
+      `</label>`;
+  }).join("") : '<div class="status">該当する出願人がありません。</div>';
+
+  $("applicantNameList").querySelectorAll("input[data-applicant-name]").forEach(input => {
+    input.addEventListener("change", () => {
+      const name = input.dataset.applicantName;
+      if (input.checked) state.selectedApplicants.add(name);
+      else state.selectedApplicants.delete(name);
+      const selected = [...state.selectedApplicants];
+      if (selected.length === 1) $("canonicalApplicantName").value = state.applicantAliases.get(selected[0]) || selected[0];
+      updateApplicantSelectionInfo();
+      $("applicantListInfo").textContent =
+        `${totalMatches.toLocaleString()}件が該当${totalMatches > 500 ? "（先頭500件を表示）" : ""}。` +
+        ` 現在の選択：${state.selectedApplicants.size.toLocaleString()}件`;
+    });
+  });
+
+  renderMergeGroups();
+  updateApplicantSelectionInfo();
+}
+
+function updateApplicantSelectionInfo() {
+  const selected = [...state.selectedApplicants];
+  $("selectedApplicantInfo").textContent = selected.length
+    ? `${selected.length.toLocaleString()}件を選択中：${selected.slice(0, 5).join("、")}${selected.length > 5 ? " ほか" : ""}`
+    : "出願人を選択してください。";
+}
+
+function renderMergeGroups() {
+  const groups = new Map();
+  for (const [original, canonical] of state.applicantAliases.entries()) {
+    if (original === canonical) continue;
+    if (!groups.has(canonical)) groups.set(canonical, []);
+    groups.get(canonical).push(original);
+  }
+  if (!groups.size) {
+    $("mergeGroups").innerHTML = "名寄せは設定されていません。";
+    return;
+  }
+  $("mergeGroups").innerHTML = [...groups.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "ja"))
+    .map(([canonical, originals]) =>
+      `<div class="merge-group">` +
+      `<div class="merge-group-head"><strong>${escapeHtml(canonical)}</strong>` +
+      `<button class="secondary" data-unmerge-canonical="${escapeHtml(canonical)}">解除</button></div>` +
+      `<div class="merge-originals">${originals.map(escapeHtml).join("、")}</div>` +
+      `</div>`
+    ).join("");
+  $("mergeGroups").querySelectorAll("button[data-unmerge-canonical]").forEach(button => {
+    button.addEventListener("click", () => {
+      const canonical = button.dataset.unmergeCanonical;
+      for (const [original, mapped] of [...state.applicantAliases.entries()]) {
+        if (mapped === canonical) state.applicantAliases.delete(original);
+      }
+      applyApplicantAliases();
+      renderApplicantMergeUI();
+      refreshAnalysisAfterApplicantMerge();
+    });
+  });
+}
+
+function refreshAnalysisAfterApplicantMerge() {
+  const resultsVisible = !$("summaryCard").classList.contains("hidden");
+  resetVisualSelections();
+  if (resultsVisible) runAnalysis();
+}
+
+function mergeSelectedApplicants() {
+  const selected = [...state.selectedApplicants];
+  const canonical = $("canonicalApplicantName").value.trim();
+  if (selected.length < 1) {
+    alert("名寄せする出願人を1件以上選択してください。");
+    return;
+  }
+  if (!canonical) {
+    alert("統合後の出願人名を入力してください。");
+    return;
+  }
+  for (const original of selected) state.applicantAliases.set(original, canonical);
+  state.selectedApplicants.clear();
+  $("canonicalApplicantName").value = canonical;
+  applyApplicantAliases();
+  renderApplicantMergeUI();
+  refreshAnalysisAfterApplicantMerge();
+}
+
+function selectSimilarApplicants() {
+  const selected = [...state.selectedApplicants];
+  if (selected.length !== 1) {
+    alert("基準にする出願人を1件だけ選択してください。");
+    return;
+  }
+  const base = selected[0];
+  const counts = originalApplicantCounts();
+  for (const name of counts.keys()) {
+    if (applicantSimilarity(base, name) >= 0.82) state.selectedApplicants.add(name);
+  }
+  $("canonicalApplicantName").value = state.applicantAliases.get(base) || base;
+  renderApplicantMergeUI();
+}
+
+function buildApplicantClassMatrix(rows) {
+  const applicantCounts = new Map();
+  for (const row of rows) {
+    for (const applicant of row.__applicants) {
+      applicantCounts.set(applicant, (applicantCounts.get(applicant) || 0) + 1);
+    }
+  }
+
+  const minCount = Math.max(1, Number($("minApplicantCount").value) || 1);
+  const maxApplicants = Math.max(5, Number($("maxApplicants").value) || 200);
+
+  const applicants = [...applicantCounts.entries()]
+    .filter(([, count]) => count >= minCount)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
+    .slice(0, maxApplicants)
+    .map(([name]) => name);
+
+  const applicantSet = new Set(applicants);
+  const classes = uniqueSorted(
+    rows.filter(r => r.__applicants.some(a => applicantSet.has(a))).flatMap(r => r.__classes),
+    true
+  );
+
+  if (applicants.length < 2) throw new Error("分析対象となる出願人が2者未満です。条件を緩めてください。");
+  if (classes.length < 2) throw new Error("分析対象となる区分が2つ未満です。");
+
+  const ai = new Map(applicants.map((a, i) => [a, i]));
+  const ci = new Map(classes.map((c, i) => [c, i]));
+  const X = Array.from({ length: applicants.length }, () => Array(classes.length).fill(0));
+
+  for (const row of rows) {
+    for (const applicant of row.__applicants) {
+      const i = ai.get(applicant);
+      if (i === undefined) continue;
+      for (const c of row.__classes) {
+        const j = ci.get(c);
+        if (j !== undefined) X[i][j] += 1;
+      }
+    }
+  }
+
+  const nonzeroRows = [];
+  const keptApplicants = [];
+  for (let i = 0; i < X.length; i++) {
+    if (X[i].some(v => v > 0)) {
+      nonzeroRows.push(X[i]);
+      keptApplicants.push(applicants[i]);
+    }
+  }
+
+  return { applicants: keptApplicants, classes, X: nonzeroRows, applicantCounts };
+}
+
+function transpose(A) {
+  if (!A.length) return [];
+  return A[0].map((_, j) => A.map(row => row[j]));
+}
+
+function matMul(A, B) {
+  const n = A.length;
+  const p = B.length;
+  const m = B[0].length;
+  const C = Array.from({ length: n }, () => Array(m).fill(0));
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < p; k++) {
+      const aik = A[i][k];
+      if (aik === 0) continue;
+      for (let j = 0; j < m; j++) C[i][j] += aik * B[k][j];
+    }
+  }
+  return C;
+}
+
+function identity(n) {
+  return Array.from({ length: n }, (_, i) =>
+    Array.from({ length: n }, (_, j) => i === j ? 1 : 0)
+  );
+}
+
+function jacobiEigenSymmetric(input, maxIter = 300, eps = 1e-11) {
+  const n = input.length;
+  const A = input.map(row => row.slice());
+  const V = identity(n);
+
+  for (let iter = 0; iter < maxIter * n * n; iter++) {
+    let p = 0, q = 1, max = 0;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const v = Math.abs(A[i][j]);
+        if (v > max) { max = v; p = i; q = j; }
+      }
+    }
+    if (max < eps) break;
+
+    const app = A[p][p], aqq = A[q][q], apq = A[p][q];
+    const phi = 0.5 * Math.atan2(2 * apq, aqq - app);
+    const c = Math.cos(phi), s = Math.sin(phi);
+
+    for (let i = 0; i < n; i++) {
+      if (i === p || i === q) continue;
+      const aip = A[i][p], aiq = A[i][q];
+      A[i][p] = A[p][i] = c * aip - s * aiq;
+      A[i][q] = A[q][i] = s * aip + c * aiq;
+    }
+
+    A[p][p] = c*c*app - 2*s*c*apq + s*s*aqq;
+    A[q][q] = s*s*app + 2*s*c*apq + c*c*aqq;
+    A[p][q] = A[q][p] = 0;
+
+    for (let i = 0; i < n; i++) {
+      const vip = V[i][p], viq = V[i][q];
+      V[i][p] = c * vip - s * viq;
+      V[i][q] = s * vip + c * viq;
+    }
+  }
+
+  const values = A.map((row, i) => row[i]);
+  const order = values.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v);
+  return {
+    values: order.map(o => o.v),
+    vectors: V.map(row => order.map(o => row[o.i]))
+  };
+}
+
+function getCAFilterSettings() {
+  return {
+    minClassCount: Math.max(1, Number($("caMinClassCount")?.value) || 5),
+    minClassApplicants: Math.max(1, Number($("caMinClassApplicants")?.value) || 2)
+  };
+}
+
+function buildCAAnalysisInput(matrix) {
+  const settings = getCAFilterSettings();
+  const classStats = matrix.classes.map((key, matrixColIndex) => {
+    const total = matrix.X.reduce((sum, row) => sum + (row[matrixColIndex] || 0), 0);
+    const applicantCoverage = matrix.X.reduce(
+      (sum, row) => sum + ((row[matrixColIndex] || 0) > 0 ? 1 : 0),
+      0
+    );
+    return {
+      key: String(key),
+      label: classLabel(key),
+      matrixColIndex,
+      total,
+      applicantCoverage,
+      eligible: total >= settings.minClassCount && applicantCoverage >= settings.minClassApplicants
+    };
+  });
+
+  const eligibleClassStats = classStats.filter(item => item.eligible);
+  if (eligibleClassStats.length < 2) {
+    throw new Error(
+      `対応分析の対象区分が${eligibleClassStats.length}件です。区分全体の最低件数または最低出願人数を下げてください。`
+    );
+  }
+
+  const colIndices = eligibleClassStats.map(item => item.matrixColIndex);
+  const reducedRows = matrix.X.map(row => colIndices.map(j => row[j] || 0));
+  const rowIndices = reducedRows
+    .map((row, matrixRowIndex) => ({ matrixRowIndex, hasData: row.some(value => value > 0) }))
+    .filter(item => item.hasData)
+    .map(item => item.matrixRowIndex);
+
+  if (rowIndices.length < 2) {
+    throw new Error("少数区分を除外した結果、対応分析の対象となる出願人が2者未満になりました。条件を緩めてください。");
+  }
+
+  return {
+    X: rowIndices.map(i => reducedRows[i]),
+    rowIndices,
+    colIndices,
+    classStats,
+    eligibleClassStats,
+    excludedClassStats: classStats.filter(item => !item.eligible),
+    excludedApplicantNames: matrix.applicants.filter((_, i) => !rowIndices.includes(i)),
+    settings
+  };
+}
+
+function getCAAnalysisInputSafe(matrix = state.matrix) {
+  if (!matrix) return null;
+  try {
+    return buildCAAnalysisInput(matrix);
+  } catch (_) {
+    return null;
+  }
+}
+
+function updateCAFilterInfo(input, errorMessage = "") {
+  const el = $("caFilterInfo");
+  if (!el) return;
+  if (!input) {
+    el.textContent = errorMessage || "対応分析の対象区分を算出できません。条件を確認してください。";
+    return;
+  }
+
+  const { settings, eligibleClassStats, excludedClassStats, excludedApplicantNames } = input;
+  const excludedPreview = excludedClassStats.slice(0, 8).map(item =>
+    `${item.label}（${item.total.toLocaleString()}件・${item.applicantCoverage.toLocaleString()}者）`
+  );
+  const more = excludedClassStats.length > excludedPreview.length
+    ? `、ほか${(excludedClassStats.length - excludedPreview.length).toLocaleString()}区分`
+    : "";
+  const applicantNote = excludedApplicantNames.length
+    ? ` 対象区分に該当がない出願人${excludedApplicantNames.length.toLocaleString()}者も座標計算から除外しました。`
+    : "";
+
+  el.textContent =
+    `分析対象：${eligibleClassStats.length.toLocaleString()}区分` +
+    `（総件数${settings.minClassCount.toLocaleString()}件以上、かつ出願人${settings.minClassApplicants.toLocaleString()}者以上）。` +
+    ` 除外：${excludedClassStats.length.toLocaleString()}区分。` +
+    (excludedPreview.length ? ` ${excludedPreview.join("、")}${more}。` : "") +
+    " 除外区分はプロットだけでなく座標計算にも使用していません。" + applicantNote;
+}
+
+function correspondenceAnalysis(X) {
+  const nr = X.length, nc = X[0].length;
+  const total = X.flat().reduce((a, b) => a + b, 0);
+  if (total <= 0) throw new Error("対応分析に使用できる件数がありません。");
+
+  const P = X.map(row => row.map(v => v / total));
+  const r = P.map(row => row.reduce((a, b) => a + b, 0));
+  const c = Array.from({ length: nc }, (_, j) => P.reduce((s, row) => s + row[j], 0));
+
+  const validCols = c.map((v, j) => ({ v, j })).filter(o => o.v > 0).map(o => o.j);
+  const S = Array.from({ length: nr }, (_, i) =>
+    validCols.map(j => (P[i][j] - r[i] * c[j]) / Math.sqrt(Math.max(r[i] * c[j], 1e-30)))
+  );
+
+  const St = transpose(S);
+  const B = matMul(St, S);
+  const eig = jacobiEigenSymmetric(B);
+  const singular = eig.values.map(v => Math.sqrt(Math.max(v, 0)));
+  const positive = singular.map((s, k) => ({ s, k })).filter(o => o.s > 1e-9);
+  if (positive.length < 2) throw new Error("対応分析で2次元を算出できません。データの区分構成が単純すぎる可能性があります。");
+
+  const dims = positive.slice(0, Math.min(3, positive.length)).map(o => o.k);
+  const V = eig.vectors;
+  const rowCoords = Array.from({ length: nr }, () => Array(dims.length).fill(0));
+  const colCoords = Array.from({ length: validCols.length }, () => Array(dims.length).fill(0));
+
+  dims.forEach((k, d) => {
+    const sigma = singular[k];
+    for (let i = 0; i < nr; i++) {
+      let uSigma = 0;
+      for (let j = 0; j < validCols.length; j++) uSigma += S[i][j] * V[j][k];
+      rowCoords[i][d] = uSigma / Math.sqrt(Math.max(r[i], 1e-30));
+    }
+    for (let j = 0; j < validCols.length; j++) {
+      colCoords[j][d] = V[j][k] * sigma / Math.sqrt(Math.max(c[validCols[j]], 1e-30));
+    }
+  });
+
+  const inertia = positive.map(o => o.s * o.s);
+  const inertiaTotal = inertia.reduce((a, b) => a + b, 0);
+  const explained = inertia.map(v => inertiaTotal ? v / inertiaTotal * 100 : 0);
+
+  return { rowCoords, colCoords, validCols, explained };
+}
+
+function pca(X) {
+  const n = X.length, p = X[0].length;
+  const means = Array(p).fill(0);
+  const stds = Array(p).fill(0);
+
+  for (let j = 0; j < p; j++) {
+    means[j] = X.reduce((s, row) => s + row[j], 0) / n;
+    const variance = X.reduce((s, row) => s + (row[j] - means[j]) ** 2, 0) / Math.max(1, n - 1);
+    stds[j] = Math.sqrt(variance);
+  }
+
+  const validCols = stds.map((v, j) => ({ v, j })).filter(o => o.v > 1e-12).map(o => o.j);
+  if (validCols.length < 2) throw new Error("PCAに利用できる変動のある区分が2つ未満です。");
+
+  const Z = X.map(row => validCols.map(j => (row[j] - means[j]) / stds[j]));
+  const cov = matMul(transpose(Z), Z).map(row => row.map(v => v / Math.max(1, n - 1)));
+  const eig = jacobiEigenSymmetric(cov);
+  const values = eig.values.map(v => Math.max(0, v));
+  const positive = values.map((v, k) => ({ v, k })).filter(o => o.v > 1e-10);
+  if (positive.length < 2) throw new Error("PCAで2成分以上を算出できません。");
+
+  const dimCount = Math.min(3, positive.length);
+  const componentIndices = positive.slice(0, dimCount).map(o => o.k);
+  const vectors = eig.vectors.map(row => componentIndices.map(k => row[k]));
+  const scores = matMul(Z, vectors);
+  const loadings = vectors.map((row, j) =>
+    row.map((v, d) => v * Math.sqrt(values[componentIndices[d]]))
+  );
+
+  const total = values.reduce((a, b) => a + b, 0);
+  const explained = componentIndices.map(k => total ? values[k] / total * 100 : 0);
+  return { scores, loadings, validCols, explained };
+}
+
+function pointSizeFromCounts(labels, countMap) {
+  return labels.map(label => {
+    const c = countMap.get(label) || 1;
+    return Math.max(8, Math.min(24, 7 + Math.sqrt(c) * 1.8));
+  });
+}
+
+function clearBokehPlot(divId) {
+  const el = $(divId);
+  el.innerHTML = "";
+  return el;
+}
+
+function attachBokehSourceClick(source) {
+  const handler = () => {
+    const indices = source.selected.indices || [];
+    if (!indices.length) return;
+    const i = indices[indices.length - 1];
+    openDetails(source.data.point_type[i], source.data.point_key[i]);
+    source.selected.indices = [];
+  };
+
+  if (source.selected.properties?.indices?.change?.connect) {
+    source.selected.properties.indices.change.connect(handler);
+  } else if (source.selected.change?.connect) {
+    source.selected.change.connect(handler);
+  }
+}
+
+function makeBokehScatterPlot({
+  divId, title, xTitle, yTitle,
+  applicantX, applicantY, applicantLabels, applicantSizes,
+  classX, classY, classLabels, classTotalCounts = [], classApplicantCounts = [],
+  applicantHoverX, applicantHoverY, classHoverX, classHoverY,
+  height = 560
+}) {
+  if (typeof Bokeh === "undefined" || !Bokeh.Plotting) {
+    throw new Error("Bokehを読み込めませんでした。インターネット接続を確認してください。");
+  }
+
+  const target = clearBokehPlot(divId);
+  const applicantSource = new Bokeh.ColumnDataSource({
+    data: {
+      x: applicantX,
+      y: applicantY,
+      label: applicantLabels,
+      size: applicantSizes,
+      point_type: applicantLabels.map(() => "applicant"),
+      point_key: applicantLabels.slice()
+    }
+  });
+
+  const classPoints = classLabels.map((label, i) => {
+    const match = String(label).match(/^(?:第)?(\d{1,2})類/);
+    const key = match ? match[1] : "";
+    return {
+      x: classX[i],
+      y: classY[i],
+      label,
+      key,
+      classNo: Number(key),
+      totalCount: Number(classTotalCounts[i] || 0),
+      applicantCount: Number(classApplicantCounts[i] || 0)
+    };
+  });
+  const goods = classPoints.filter(p => p.classNo >= 1 && p.classNo <= 34);
+  const services = classPoints.filter(p => p.classNo >= 35 && p.classNo <= 45);
+  const makeClassSource = points => new Bokeh.ColumnDataSource({
+    data: {
+      x: points.map(p => p.x),
+      y: points.map(p => p.y),
+      label: points.map(p => p.label),
+      size: points.map(() => 14),
+      total_count: points.map(p => p.totalCount),
+      applicant_count: points.map(p => p.applicantCount),
+      point_type: points.map(() => "class"),
+      point_key: points.map(p => p.key)
+    }
+  });
+  const goodsSource = makeClassSource(goods);
+  const servicesSource = makeClassSource(services);
+
+  const plot = Bokeh.Plotting.figure({
+    title,
+    tools: "pan,wheel_zoom,box_zoom,reset,save,tap",
+    active_scroll: "wheel_zoom",
+    sizing_mode: "stretch_width",
+    height,
+    toolbar_location: "above",
+    background_fill_color: "#ffffff",
+    border_fill_color: "#ffffff",
+    outline_line_color: "#dbe2ea"
+  });
+
+  const applicantGlyph = new Bokeh.Scatter({
+    x: { field: "x" },
+    y: { field: "y" },
+    size: { field: "size" },
+    marker: "circle",
+    fill_color: CHART_COLORS.applicant,
+    fill_alpha: 0.76,
+    line_color: "#ffffff",
+    line_width: 1
+  });
+  const goodsGlyph = new Bokeh.Scatter({
+    x: { field: "x" },
+    y: { field: "y" },
+    size: { field: "size" },
+    marker: "diamond",
+    fill_color: CHART_COLORS.goods,
+    fill_alpha: 0.92,
+    line_color: "#ffffff",
+    line_width: 1
+  });
+  const servicesGlyph = new Bokeh.Scatter({
+    x: { field: "x" },
+    y: { field: "y" },
+    size: { field: "size" },
+    marker: "diamond",
+    fill_color: CHART_COLORS.services,
+    fill_alpha: 0.92,
+    line_color: "#ffffff",
+    line_width: 1
+  });
+
+  const applicantRenderer = plot.add_glyph(applicantGlyph, applicantSource);
+  const goodsRenderer = plot.add_glyph(goodsGlyph, goodsSource);
+  const servicesRenderer = plot.add_glyph(servicesGlyph, servicesSource);
+
+  plot.add_layout(new Bokeh.LabelSet({
+    x: { field: "x" },
+    y: { field: "y" },
+    text: { field: "label" },
+    source: applicantSource,
+    x_offset: 5,
+    y_offset: 5,
+    text_font_size: "9px",
+    text_color: CHART_COLORS.applicantText
+  }));
+  plot.add_layout(new Bokeh.LabelSet({
+    x: { field: "x" },
+    y: { field: "y" },
+    text: { field: "label" },
+    source: goodsSource,
+    x_offset: 5,
+    y_offset: 5,
+    text_font_size: "9px",
+    text_font_style: "bold",
+    text_color: CHART_COLORS.goodsText
+  }));
+  plot.add_layout(new Bokeh.LabelSet({
+    x: { field: "x" },
+    y: { field: "y" },
+    text: { field: "label" },
+    source: servicesSource,
+    x_offset: 5,
+    y_offset: 5,
+    text_font_size: "9px",
+    text_font_style: "bold",
+    text_color: CHART_COLORS.servicesText
+  }));
+
+  plot.add_tools(new Bokeh.HoverTool({
+    renderers: [applicantRenderer],
+    tooltips: [
+      ["出願人", "@label"],
+      [applicantHoverX, "@x{0.000}"],
+      [applicantHoverY, "@y{0.000}"]
+    ]
+  }));
+  plot.add_tools(new Bokeh.HoverTool({
+    renderers: [goodsRenderer],
+    tooltips: [
+      ["区分", "@label"],
+      ["種別", "商品（1–34類）"],
+      ["区分総件数", "@total_count{0}件"],
+      ["出願人数", "@applicant_count{0}者"],
+      [classHoverX, "@x{0.000}"],
+      [classHoverY, "@y{0.000}"]
+    ]
+  }));
+  plot.add_tools(new Bokeh.HoverTool({
+    renderers: [servicesRenderer],
+    tooltips: [
+      ["区分", "@label"],
+      ["種別", "サービス（35–45類）"],
+      ["区分総件数", "@total_count{0}件"],
+      ["出願人数", "@applicant_count{0}者"],
+      [classHoverX, "@x{0.000}"],
+      [classHoverY, "@y{0.000}"]
+    ]
+  }));
+
+  plot.add_layout(new Bokeh.Span({
+    location: 0,
+    dimension: "height",
+    line_color: "#94a3b8",
+    line_width: 1,
+    line_alpha: 0.8
+  }));
+  plot.add_layout(new Bokeh.Span({
+    location: 0,
+    dimension: "width",
+    line_color: "#94a3b8",
+    line_width: 1,
+    line_alpha: 0.8
+  }));
+
+  const legend = new Bokeh.Legend({
+    items: [
+      new Bokeh.LegendItem({ label: { value: "出願人" }, renderers: [applicantRenderer] }),
+      new Bokeh.LegendItem({ label: { value: "商品区分（1–34類）" }, renderers: [goodsRenderer] }),
+      new Bokeh.LegendItem({ label: { value: "サービス区分（35–45類）" }, renderers: [servicesRenderer] })
+    ],
+    orientation: "horizontal",
+    location: "center"
+  });
+  plot.add_layout(legend, "below");
+
+  if (plot.below?.[0]) plot.below[0].axis_label = xTitle;
+  if (plot.left?.[0]) plot.left[0].axis_label = yTitle;
+  if (plot.title) plot.title.text_font_size = "16px";
+
+  attachBokehSourceClick(applicantSource);
+  attachBokehSourceClick(goodsSource);
+  attachBokehSourceClick(servicesSource);
+  Bokeh.Plotting.show(plot, target);
+}
+
+
+function makeBokehApplicantScatterPlot({
+  divId, title, xTitle, yTitle,
+  applicantX, applicantY, applicantLabels, applicantSizes,
+  applicantHoverX, applicantHoverY,
+  height = 560
+}) {
+  if (typeof Bokeh === "undefined" || !Bokeh.Plotting) {
+    throw new Error("Bokehを読み込めませんでした。インターネット接続を確認してください。");
+  }
+
+  const target = clearBokehPlot(divId);
+  const source = new Bokeh.ColumnDataSource({
+    data: {
+      x: applicantX,
+      y: applicantY,
+      label: applicantLabels,
+      size: applicantSizes,
+      point_type: applicantLabels.map(() => "applicant"),
+      point_key: applicantLabels.slice()
+    }
+  });
+
+  const plot = Bokeh.Plotting.figure({
+    title,
+    tools: "pan,wheel_zoom,box_zoom,reset,save,tap",
+    active_scroll: "wheel_zoom",
+    sizing_mode: "stretch_width",
+    height,
+    toolbar_location: "above",
+    background_fill_color: "#ffffff",
+    border_fill_color: "#ffffff",
+    outline_line_color: "#dbe2ea"
+  });
+
+  const glyph = new Bokeh.Scatter({
+    x: { field: "x" },
+    y: { field: "y" },
+    size: { field: "size" },
+    marker: "circle",
+    fill_color: CHART_COLORS.applicant,
+    fill_alpha: 0.76,
+    line_color: "#ffffff",
+    line_width: 1
+  });
+  const renderer = plot.add_glyph(glyph, source);
+
+  plot.add_layout(new Bokeh.LabelSet({
+    x: { field: "x" },
+    y: { field: "y" },
+    text: { field: "label" },
+    source,
+    x_offset: 5,
+    y_offset: 5,
+    text_font_size: "9px",
+    text_color: CHART_COLORS.applicantText
+  }));
+
+  plot.add_tools(new Bokeh.HoverTool({
+    renderers: [renderer],
+    tooltips: [
+      ["出願人", "@label"],
+      [applicantHoverX, "@x{0.000}"],
+      [applicantHoverY, "@y{0.000}"]
+    ]
+  }));
+
+  plot.add_layout(new Bokeh.Span({
+    location: 0,
+    dimension: "height",
+    line_color: "#94a3b8",
+    line_width: 1,
+    line_alpha: 0.8
+  }));
+  plot.add_layout(new Bokeh.Span({
+    location: 0,
+    dimension: "width",
+    line_color: "#94a3b8",
+    line_width: 1,
+    line_alpha: 0.8
+  }));
+
+  const legend = new Bokeh.Legend({
+    items: [new Bokeh.LegendItem({ label: { value: "出願人" }, renderers: [renderer] })],
+    orientation: "horizontal",
+    location: "center"
+  });
+  plot.add_layout(legend, "below");
+
+  if (plot.below?.[0]) plot.below[0].axis_label = xTitle;
+  if (plot.left?.[0]) plot.left[0].axis_label = yTitle;
+  if (plot.title) plot.title.text_font_size = "16px";
+
+  attachBokehSourceClick(source);
+  Bokeh.Plotting.show(plot, target);
+}
+
+const RANKING_PERIODS = Object.freeze([
+  { key: "before2020", label: "2020年以前", color: "#bfdbfe" },
+  { key: "y2021_2023", label: "2021–2023年", color: "#60a5fa" },
+  { key: "y2024_2026", label: "2024–2026年", color: "#1d4ed8" }
+]);
+
+function rankingPeriodKey(year) {
+  const y = Number(year);
+  if (!Number.isInteger(y)) return "";
+  if (y <= 2020) return "before2020";
+  if (y >= 2021 && y <= 2023) return "y2021_2023";
+  if (y >= 2024 && y <= 2026) return "y2024_2026";
+  return "";
+}
+
+function rankingApplicantItems() {
+  const counts = new Map();
+  for (const row of state.filteredRows) {
+    for (const applicant of row.__applicants) {
+      counts.set(applicant, (counts.get(applicant) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
+    .map(([name, count]) => ({ name, count }));
+}
+
+function initializeRankingSelectors() {
+  const items = rankingApplicantItems();
+  const valid = new Set(items.map(item => item.name));
+
+  if (!state.rankingInitialized) {
+    state.rankingSelections = [0, 1, 2].map(i => items[i]?.name || items[0]?.name || "");
+    state.rankingInitialized = true;
+  } else {
+    state.rankingSelections = state.rankingSelections.map((name, i) =>
+      valid.has(name) ? name : (items[i]?.name || items[0]?.name || "")
+    );
+  }
+
+  const options = items.map(item =>
+    `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}（${item.count.toLocaleString()}件）</option>`
+  ).join("");
+
+  [1, 2, 3].forEach((slot, index) => {
+    const select = $(`rankingApplicant${slot}`);
+    select.innerHTML = options || '<option value="">出願人なし</option>';
+    if (state.rankingSelections[index] && valid.has(state.rankingSelections[index])) {
+      select.value = state.rankingSelections[index];
+    }
+    select.disabled = !items.length;
+    const sortSelect = $(`rankingSort${slot}`);
+    sortSelect.value = state.rankingSorts[index] || "count";
+    sortSelect.disabled = !items.length;
+  });
+}
+
+function buildApplicantClassRanking(applicant, sortMode = "count", sharedClassOrder = null) {
+  const map = new Map(
+    Array.from({ length: 45 }, (_, index) => {
+      const classNo = String(index + 1);
+      return [classNo, { classNo, before2020: 0, y2021_2023: 0, y2024_2026: 0 }];
+    })
+  );
+
+  for (const row of state.filteredRows) {
+    if (!row.__applicants.includes(applicant)) continue;
+    const period = rankingPeriodKey(row.__year);
+    if (!period) continue;
+    for (const classNo of row.__classes) {
+      const item = map.get(String(classNo));
+      if (item) item[period] += 1;
+    }
+  }
+
+  const items = [...map.values()].map(item => ({
+    ...item,
+    total: item.before2020 + item.y2021_2023 + item.y2024_2026
+  }));
+
+  if (Array.isArray(sharedClassOrder) && sharedClassOrder.length === 45) {
+    const orderIndex = new Map(sharedClassOrder.map((classNo, index) => [String(classNo), index]));
+    return items.sort((a, b) =>
+      (orderIndex.get(a.classNo) ?? 999) - (orderIndex.get(b.classNo) ?? 999)
+    );
+  }
+
+  return items.sort(sortMode === "class"
+    ? (a, b) => Number(a.classNo) - Number(b.classNo)
+    : (a, b) => b.total - a.total || Number(a.classNo) - Number(b.classNo));
+}
+
+function buildSharedRankingClassOrder(applicants, sortMode = "count") {
+  const classNumbers = Array.from({ length: 45 }, (_, index) => String(index + 1));
+  if (sortMode === "class") return classNumbers;
+
+  const totals = new Map(classNumbers.map(classNo => [classNo, 0]));
+  for (const applicant of applicants.filter(Boolean)) {
+    for (const item of buildApplicantClassRanking(applicant, "class")) {
+      totals.set(item.classNo, (totals.get(item.classNo) || 0) + item.total);
+    }
+  }
+
+  return classNumbers.sort((a, b) =>
+    (totals.get(b) || 0) - (totals.get(a) || 0) || Number(a) - Number(b)
+  );
+}
+
+function openRankingDetails(applicant, classNo, periodKey, periodLabel) {
+  const records = state.filteredRows.filter(row =>
+    row.__applicants.includes(applicant) &&
+    row.__classes.includes(String(classNo)) &&
+    rankingPeriodKey(row.__year) === periodKey
+  );
+  showRecordDetails(`${applicant} × ${classLabel(classNo)} × ${periodLabel}`, records);
+}
+
+function attachRankingSourceClick(source) {
+  const handler = () => {
+    const indices = source.selected.indices || [];
+    if (!indices.length) return;
+    const i = indices[indices.length - 1];
+    openRankingDetails(
+      source.data.applicant[i],
+      source.data.class_no[i],
+      source.data.period_key[i],
+      source.data.period_label[i]
+    );
+    source.selected.indices = [];
+  };
+
+  if (source.selected.properties?.indices?.change?.connect) {
+    source.selected.properties.indices.change.connect(handler);
+  } else if (source.selected.change?.connect) {
+    source.selected.change.connect(handler);
+  }
+}
+
+function renderApplicantRankingPlot(divId, applicant, sortMode = "count", sharedClassOrder = null) {
+  const target = clearBokehPlot(divId);
+  if (!applicant) {
+    target.innerHTML = '<div class="status">表示する出願人がありません。</div>';
+    return;
+  }
+  if (typeof Bokeh === "undefined" || !Bokeh.Plotting) {
+    target.innerHTML = '<div class="status error">Bokehを読み込めませんでした。</div>';
+    return;
+  }
+
+  const items = buildApplicantClassRanking(applicant, sortMode, sharedClassOrder);
+  if (!items.length) {
+    target.innerHTML = '<div class="status">対象期間に区分データがありません。</div>';
+    return;
+  }
+
+  const factors = items.map(item => `${item.classNo}類`);
+  const factorRange = factors.slice().reverse();
+  const plotHeight = Math.max(470, Math.min(900, items.length * 22 + 150));
+
+  const plot = Bokeh.Plotting.figure({
+    title: applicant,
+    y_range: factorRange,
+    tools: "pan,wheel_zoom,box_zoom,reset,save,tap",
+    active_scroll: "wheel_zoom",
+    sizing_mode: "stretch_width",
+    height: plotHeight,
+    toolbar_location: "above",
+    background_fill_color: "#ffffff",
+    border_fill_color: "#ffffff",
+    outline_line_color: "#dbe2ea"
+  });
+
+  const periodDefinitions = [
+    {
+      period: RANKING_PERIODS[0],
+      left: items.map(() => 0),
+      right: items.map(item => item.before2020),
+      values: items.map(item => item.before2020)
+    },
+    {
+      period: RANKING_PERIODS[1],
+      left: items.map(item => item.before2020),
+      right: items.map(item => item.before2020 + item.y2021_2023),
+      values: items.map(item => item.y2021_2023)
+    },
+    {
+      period: RANKING_PERIODS[2],
+      left: items.map(item => item.before2020 + item.y2021_2023),
+      right: items.map(item => item.total),
+      values: items.map(item => item.y2024_2026)
+    }
+  ];
+
+  const rendererItems = periodDefinitions.map(definition => {
+    const source = new Bokeh.ColumnDataSource({
+      data: {
+        y: factors,
+        class_label: items.map(item => classLabel(item.classNo)),
+        class_no: items.map(item => item.classNo),
+        left: definition.left,
+        right: definition.right,
+        period_value: definition.values,
+        total: items.map(item => item.total),
+        applicant: items.map(() => applicant),
+        period_key: items.map(() => definition.period.key),
+        period_label: items.map(() => definition.period.label)
+      }
+    });
+
+    const glyph = new Bokeh.HBar({
+      y: { field: "y" },
+      height: 0.78,
+      left: { field: "left" },
+      right: { field: "right" },
+      fill_color: definition.period.color,
+      line_color: "#ffffff",
+      line_width: 0.8
+    });
+    const renderer = plot.add_glyph(glyph, source);
+
+    plot.add_tools(new Bokeh.HoverTool({
+      renderers: [renderer],
+      tooltips: [
+        ["区分", "@class_label"],
+        ["期間", "@period_label"],
+        ["期間件数", "@period_value{0}件"],
+        ["合計", "@total{0}件"],
+        ["操作", "クリックして該当案件を表示"]
+      ]
+    }));
+
+    attachRankingSourceClick(source);
+    return { period: definition.period, renderer };
+  });
+
+  plot.add_layout(new Bokeh.Legend({
+    items: rendererItems.map(item => new Bokeh.LegendItem({
+      label: { value: item.period.label },
+      renderers: [item.renderer]
+    })),
+    orientation: "horizontal",
+    location: "center"
+  }), "below");
+
+  if (plot.below?.[0]) plot.below[0].axis_label = "出願件数";
+  if (plot.left?.[0]) {
+    plot.left[0].axis_label = sortMode === "class"
+      ? "区分（1類→45類）"
+      : "区分（当該出願人の件数順）";
+  }
+  if (plot.title) plot.title.text_font_size = "15px";
+
+  Bokeh.Plotting.show(plot, target);
+}
+
+function renderApplicantRankings() {
+  initializeRankingSelectors();
+
+  [1, 2, 3].forEach((slot, index) => {
+    const applicantSelect = $(`rankingApplicant${slot}`);
+    const sortSelect = $(`rankingSort${slot}`);
+    const applicant = applicantSelect.value;
+    const sortMode = sortSelect.value || state.rankingSorts[index] || "count";
+
+    state.rankingSelections[index] = applicant;
+    state.rankingSorts[index] = sortMode;
+
+    renderApplicantRankingPlot(
+      `rankingPlot${slot}`,
+      applicant,
+      sortMode
+    );
+  });
+}
+
+function renderCA(matrix) {
+  let input;
+  let ca;
+  try {
+    input = buildCAAnalysisInput(matrix);
+    ca = correspondenceAnalysis(input.X);
+    updateCAFilterInfo(input);
+  } catch (err) {
+    updateCAFilterInfo(input || null, err.message || String(err));
+    clearBokehPlot("caPlot").innerHTML = `<div class="status error">${escapeHtml(err.message || String(err))}</div>`;
+    updateVisualSelectionSummary("ca");
+    return;
+  }
+
+  const applicantSelection = getVisualSelectedSet("ca", "applicant");
+  const classSelection = getVisualSelectedSet("ca", "class");
+
+  const applicantIndices = input.rowIndices.map((matrixRowIndex, caRowIndex) => ({
+    name: matrix.applicants[matrixRowIndex],
+    matrixRowIndex,
+    caRowIndex
+  })).filter(item => applicantSelection.has(String(item.name)));
+
+  const allClassItems = ca.validCols.map((localColIndex, caColIndex) => {
+    const matrixColIndex = input.colIndices[localColIndex];
+    const stat = input.classStats.find(item => item.matrixColIndex === matrixColIndex);
+    return {
+      key: String(matrix.classes[matrixColIndex]),
+      caColIndex,
+      stat
+    };
+  });
+  const classIndices = allClassItems.filter(item => classSelection.has(item.key));
+  const applicants = applicantIndices.map(item => item.name);
+  const classKeys = classIndices.map(item => item.key);
+  const classLabels = classKeys.map(classLabel);
+  const xPct = ca.explained[0]?.toFixed(1) || "0.0";
+  const yPct = ca.explained[1]?.toFixed(1) || "0.0";
+
+  if (!applicants.length && !classKeys.length) {
+    clearBokehPlot("caPlot").innerHTML = '<div class="status">表示対象が選択されていません。「表示対象を選択」から設定してください。</div>';
+    updateVisualSelectionSummary("ca");
+    return;
+  }
+
+  makeBokehScatterPlot({
+    divId: "caPlot",
+    title: "出願人×区分 対応分析",
+    xTitle: `次元1（${xPct}%）`,
+    yTitle: `次元2（${yPct}%）`,
+    applicantX: applicantIndices.map(item => ca.rowCoords[item.caRowIndex][0]),
+    applicantY: applicantIndices.map(item => ca.rowCoords[item.caRowIndex][1]),
+    applicantLabels: applicants,
+    applicantSizes: pointSizeFromCounts(applicants, matrix.applicantCounts),
+    classX: classIndices.map(item => ca.colCoords[item.caColIndex][0]),
+    classY: classIndices.map(item => ca.colCoords[item.caColIndex][1]),
+    classLabels,
+    classTotalCounts: classIndices.map(item => item.stat?.total || 0),
+    classApplicantCounts: classIndices.map(item => item.stat?.applicantCoverage || 0),
+    applicantHoverX: "次元1",
+    applicantHoverY: "次元2",
+    classHoverX: "次元1",
+    classHoverY: "次元2"
+  });
+  updateVisualSelectionSummary("ca");
+}
+
+function scaleLoadings(scores, loadings, dims) {
+  const maxScore = Math.max(
+    ...scores.flatMap(r => dims.map(d => Math.abs(r[d]))),
+    1e-9
+  );
+  const maxLoad = Math.max(
+    ...loadings.flatMap(r => dims.map(d => Math.abs(r[d]))),
+    1e-9
+  );
+  const factor = 0.72 * maxScore / maxLoad;
+  return loadings.map(row => row.map(v => v * factor));
+}
+
+function populatePcaAxisOptions(result) {
+  const dimCount = result.scores[0]?.length || 0;
+  const selects = [$("pcaXAxis"), $("pcaYAxis")];
+  selects.forEach((select, selectIndex) => {
+    const previous = Number(select.value);
+    select.innerHTML = Array.from({ length: Math.min(3, dimCount) }, (_, i) => {
+      const pct = result.explained[i];
+      const suffix = Number.isFinite(pct) ? `・${pct.toFixed(1)}%` : "";
+      return `<option value="${i}">主成分${i + 1}（PC${i + 1}${suffix}）</option>`;
+    }).join("");
+    if (Number.isInteger(previous) && previous < dimCount) select.value = String(previous);
+    else select.value = String(selectIndex === 0 ? 0 : Math.min(1, Math.max(0, dimCount - 1)));
+  });
+  $("pcaXAxis").disabled = dimCount < 1;
+  $("pcaYAxis").disabled = dimCount < 2;
+  $("pcaAxisUpdateBtn").disabled = dimCount < 2;
+}
+
+function renderPcaSelectedPlot(matrix, result) {
+  const dx = Number($("pcaXAxis").value);
+  const dy = Number($("pcaYAxis").value);
+  const divId = "pcaPlot";
+
+  if (!Number.isInteger(dx) || !Number.isInteger(dy) ||
+      result.scores[0].length <= Math.max(dx, dy)) {
+    clearBokehPlot(divId).innerHTML = '<div class="status">選択した主成分を算出できませんでした。</div>';
+    return;
+  }
+  if (dx === dy) {
+    clearBokehPlot(divId).innerHTML = '<div class="status">横軸と縦軸には異なる主成分を選択してください。</div>';
+    return;
+  }
+
+  const applicantSelection = getVisualSelectedSet("pca", "applicant");
+  const applicantIndices = matrix.applicants.map((name, i) => ({ name, i }))
+    .filter(item => applicantSelection.has(String(item.name)));
+  const xp = result.explained[dx]?.toFixed(1) || "0.0";
+  const yp = result.explained[dy]?.toFixed(1) || "0.0";
+
+  if (!applicantIndices.length) {
+    clearBokehPlot(divId).innerHTML = '<div class="status">表示対象の出願人が選択されていません。「表示対象を選択」から設定してください。</div>';
+    updateVisualSelectionSummary("pca");
+    return;
+  }
+
+  makeBokehApplicantScatterPlot({
+    divId,
+    title: `出願人の類似性：主成分${dx + 1} × 主成分${dy + 1}`,
+    xTitle: `主成分${dx + 1}（PC${dx + 1}・${xp}%）`,
+    yTitle: `主成分${dy + 1}（PC${dy + 1}・${yp}%）`,
+    applicantX: applicantIndices.map(item => result.scores[item.i][dx]),
+    applicantY: applicantIndices.map(item => result.scores[item.i][dy]),
+    applicantLabels: applicantIndices.map(item => item.name),
+    applicantSizes: pointSizeFromCounts(applicantIndices.map(item => item.name), matrix.applicantCounts),
+    applicantHoverX: `主成分${dx + 1}`,
+    applicantHoverY: `主成分${dy + 1}`,
+    height: 560
+  });
+  updateVisualSelectionSummary("pca");
+}
+
+function formatLoadingItems(items) {
+  return items.length
+    ? items.map(item => `${item.label}（${item.value >= 0 ? "+" : ""}${item.value.toFixed(2)}）`).join("、")
+    : "該当なし";
+}
+
+function renderPcaComponentReferences(matrix, result) {
+  const classSelection = getVisualSelectedSet("pca", "class");
+  $("pcaComponentReferences").innerHTML = [0, 1, 2].map(i => {
+    if (!Number.isFinite(result.explained[i]) || !result.loadings[0] || result.loadings[0][i] === undefined) {
+      return `<div class="component-reference"><strong>主成分${i + 1}（PC${i + 1}）</strong>参考情報を算出できません。</div>`;
+    }
+
+    const items = result.validCols.map((matrixColIndex, loadingIndex) => ({
+      key: String(matrix.classes[matrixColIndex]),
+      label: classLabel(matrix.classes[matrixColIndex]),
+      value: result.loadings[loadingIndex][i]
+    })).filter(item => classSelection.has(item.key));
+    const positive = items.filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value).slice(0, 3);
+    const negative = items.filter(item => item.value < 0)
+      .sort((a, b) => a.value - b.value).slice(0, 3);
+
+    return `<div class="component-reference">` +
+      `<strong>主成分${i + 1}の解釈参考</strong>` +
+      `<div class="positive">正方向：${escapeHtml(formatLoadingItems(positive))}</div>` +
+      `<div class="negative">負方向：${escapeHtml(formatLoadingItems(negative))}</div>` +
+      `</div>`;
+  }).join("") +
+  `<p class="help span-12" style="grid-column:1/-1;margin:0;">負荷量の絶対値が大きい区分ほど、その主成分を特徴づけます。主成分の符号は反転し得るため、正負の名称そのものではなく、両方向の区分の対比を解釈してください。</p>`;
+}
+
+function renderPCA(matrix) {
+  const result = pca(matrix.X);
+  state.pcaResult = result;
+  $("pcaComponentNames").innerHTML = [0, 1, 2].map(i => {
+    const pct = result.explained[i];
+    const suffix = Number.isFinite(pct) ? `・寄与率 ${pct.toFixed(1)}%` : "・算出不可";
+    return `<span class="component-name">主成分${i + 1}（PC${i + 1}）${suffix}</span>`;
+  }).join("");
+  populatePcaAxisOptions(result);
+  renderPcaComponentReferences(matrix, result);
+  renderPcaSelectedPlot(matrix, result);
+}
+
+
+function calculateGrowthRate(recentCount, recentYears, baseCount, baseYears) {
+  if (baseCount <= 0) return null;
+  const baseAverage = baseCount / baseYears;
+  const recentAverage = recentCount / recentYears;
+  return (recentAverage / baseAverage - 1) * 100;
+}
+
+function populateBubbleApplicantOptions() {
+  const applicants = [...new Set(state.rows.flatMap(row => row.__applicants))]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "ja"));
+  $("bubbleApplicantOptions").innerHTML = applicants
+    .map(name => `<option value="${escapeHtml(name)}"></option>`)
+    .join("");
+}
+
+function bubbleApplicantMatches(row, query) {
+  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const haystack = row.__applicants.join(" ").toLowerCase();
+  return tokens.every(token => haystack.includes(token));
+}
+
+function buildBubbleMetrics(mode, applicantQuery = "") {
+  const metrics = new Map();
+  const ensure = (key, label) => {
+    if (!metrics.has(key)) {
+      metrics.set(key, {
+        key,
+        label,
+        shortBase: 0,
+        shortRecent: 0,
+        longBase: 0,
+        longRecent: 0,
+        total: 0
+      });
+    }
+    return metrics.get(key);
+  };
+
+  for (const row of state.rows) {
+    const year = Number(row.__year);
+    if (!Number.isInteger(year)) continue;
+    if (mode === "class" && !bubbleApplicantMatches(row, applicantQuery)) continue;
+    const entities = mode === "applicant"
+      ? row.__applicants.map(name => ({ key: name, label: name }))
+      : row.__classes.map(c => ({ key: String(c), label: classLabel(c) }));
+
+    for (const entity of entities) {
+      const item = ensure(entity.key, entity.label);
+      if (year >= 2016 && year <= 2020) item.shortBase += 1;
+      if (year >= 2021 && year <= 2026) item.shortRecent += 1;
+      if (year >= 2006 && year <= 2015) item.longBase += 1;
+      if (year >= 2016 && year <= 2026) item.longRecent += 1;
+      if (year >= 2006 && year <= 2026) item.total += 1;
+    }
+  }
+
+  return [...metrics.values()].map(item => ({
+    ...item,
+    shortRate: calculateGrowthRate(item.shortRecent, 6, item.shortBase, 5),
+    longRate: calculateGrowthRate(item.longRecent, 11, item.longBase, 10)
+  }));
+}
+
+function bubbleMatchesFilter(item, query) {
+  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const haystack = `${item.label} ${item.key} 第${item.key}類`.toLowerCase();
+  return tokens.every(token => haystack.includes(token));
+}
+
+function bubbleSizeScale(items) {
+  const values = items.map(item => item.total);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (min === max) return items.map(() => 24);
+  const minRoot = Math.sqrt(min);
+  const maxRoot = Math.sqrt(max);
+  return items.map(item => 10 + (Math.sqrt(item.total) - minRoot) / (maxRoot - minRoot) * 48);
+}
+
+function makeBubbleSource(items, sizes, mode) {
+  return new Bokeh.ColumnDataSource({
+    data: {
+      x: items.map(item => item.longRate),
+      y: items.map(item => item.shortRate),
+      size: sizes,
+      label: items.map(item => item.label),
+      total: items.map(item => item.total),
+      short_base: items.map(item => item.shortBase),
+      short_recent: items.map(item => item.shortRecent),
+      long_base: items.map(item => item.longBase),
+      long_recent: items.map(item => item.longRecent),
+      point_type: items.map(() => mode),
+      point_key: items.map(item => item.key)
+    }
+  });
+}
+
+function bubbleRecordsForPoint(type, key) {
+  const applicantQuery = type === "class" ? $("bubbleFilter").value.trim() : "";
+  return state.rows.filter(row => {
+    const year = Number(row.__year);
+    if (!Number.isInteger(year) || year < 2006 || year > 2026) return false;
+    if (type === "applicant") return row.__applicants.includes(key);
+    if (type === "class") {
+      return row.__classes.includes(String(key)) && bubbleApplicantMatches(row, applicantQuery);
+    }
+    return false;
+  });
+}
+
+function attachBubbleSourceClick(source) {
+  const handler = () => {
+    const indices = source.selected.indices || [];
+    if (!indices.length) return;
+    const i = indices[indices.length - 1];
+    const type = source.data.point_type[i];
+    const key = source.data.point_key[i];
+    const title = type === "applicant" ? key : classLabel(key);
+    showRecordDetails(`${title}（2006–2026年）`, bubbleRecordsForPoint(type, key));
+    source.selected.indices = [];
+  };
+
+  if (source.selected.properties?.indices?.change?.connect) {
+    source.selected.properties.indices.change.connect(handler);
+  } else if (source.selected.change?.connect) {
+    source.selected.change.connect(handler);
+  }
+}
+
+function addBubbleRenderer(plot, source, fillColor, textColor, legendLabel, fillAlpha) {
+  const glyph = new Bokeh.Scatter({
+    x: { field: "x" },
+    y: { field: "y" },
+    size: { field: "size" },
+    marker: "circle",
+    fill_color: fillColor,
+    fill_alpha: fillAlpha,
+    line_color: "#ffffff",
+    line_width: 1.2
+  });
+  const renderer = plot.add_glyph(glyph, source);
+  plot.add_layout(new Bokeh.LabelSet({
+    x: { field: "x" },
+    y: { field: "y" },
+    text: { field: "label" },
+    source,
+    x_offset: 6,
+    y_offset: 6,
+    text_font_size: "9px",
+    text_font_style: "bold",
+    text_color: textColor,
+    text_alpha: 0.92
+  }));
+  attachBubbleSourceClick(source);
+  return { renderer, legendLabel };
+}
+
+function renderBubbleChart() {
+  if (!state.rows.length) return;
+  if (typeof Bokeh === "undefined" || !Bokeh.Plotting) {
+    $("bubblePlot").innerHTML = '<div class="status error">Bokehを読み込めませんでした。</div>';
+    return;
+  }
+
+  const mode = $("bubbleMode").value;
+  const query = $("bubbleFilter").value.trim();
+  const minCount = Math.max(1, Number($("bubbleMinCount").value) || 1);
+  const maxItems = Math.max(10, Math.min(1000, Number($("bubbleMaxItems").value) || 300));
+  const allItems = buildBubbleMetrics(mode, mode === "class" ? query : "");
+  const undefinedCount = allItems.filter(item => item.shortRate === null || item.longRate === null).length;
+  const selectedItems = getVisualSelectedSet("bubble", mode === "applicant" ? "applicant" : "class");
+  const eligible = allItems
+    .filter(item => item.shortRate !== null && item.longRate !== null)
+    .filter(item => selectedItems.has(String(item.key)))
+    .filter(item => item.total >= minCount)
+    .filter(item => mode === "applicant" ? bubbleMatchesFilter(item, query) : true)
+    .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, "ja"));
+  const items = eligible.slice(0, maxItems);
+
+  clearBokehPlot("bubblePlot");
+  if (!items.length) {
+    $("bubblePlot").innerHTML = '<div class="status">条件に該当し、増減率を算出できるデータがありません。</div>';
+    $("bubbleInfo").textContent = `基準期間の件数が0のため算出対象外：${undefinedCount.toLocaleString()}項目。`;
+    updateVisualSelectionSummary("bubble");
+    return;
+  }
+
+  const plot = Bokeh.Plotting.figure({
+    title: mode === "applicant" ? "出願人別 出願件数増加率" : "区分別 出願件数増加率",
+    tools: "pan,wheel_zoom,box_zoom,reset,save,tap",
+    active_scroll: "wheel_zoom",
+    sizing_mode: "stretch_width",
+    height: 620,
+    toolbar_location: "above",
+    background_fill_color: "#ffffff",
+    border_fill_color: "#ffffff",
+    outline_line_color: "#dbe2ea"
+  });
+
+  const sizes = bubbleSizeScale(items);
+  const renderers = [];
+  if (mode === "applicant") {
+    const source = makeBubbleSource(items, sizes, "applicant");
+    renderers.push(addBubbleRenderer(plot, source, CHART_COLORS.applicant, CHART_COLORS.applicantText, "出願人", 0.76));
+  } else {
+    const goodsItems = items.filter(item => Number(item.key) >= 1 && Number(item.key) <= 34);
+    const serviceItems = items.filter(item => Number(item.key) >= 35 && Number(item.key) <= 45);
+    const sizeMap = new Map(items.map((item, i) => [item.key, sizes[i]]));
+    if (goodsItems.length) {
+      const source = makeBubbleSource(goodsItems, goodsItems.map(item => sizeMap.get(item.key)), "class");
+      renderers.push(addBubbleRenderer(plot, source, CHART_COLORS.goods, CHART_COLORS.goodsText, "商品区分（1–34類）", 0.92));
+    }
+    if (serviceItems.length) {
+      const source = makeBubbleSource(serviceItems, serviceItems.map(item => sizeMap.get(item.key)), "class");
+      renderers.push(addBubbleRenderer(plot, source, CHART_COLORS.services, CHART_COLORS.servicesText, "サービス区分（35–45類）", 0.92));
+    }
+  }
+
+  for (const { renderer } of renderers) {
+    plot.add_tools(new Bokeh.HoverTool({
+      renderers: [renderer],
+      tooltips: [
+        [mode === "applicant" ? "出願人" : "区分", "@label"],
+        ["長期増減率", "@x{0.0}%"],
+        ["短期増減率", "@y{0.0}%"],
+        ["2006–2015年", "@long_base{0}件"],
+        ["2016–2026年", "@long_recent{0}件"],
+        ["2016–2020年", "@short_base{0}件"],
+        ["2021–2026年", "@short_recent{0}件"],
+        ["全体件数", "@total{0}件"]
+      ]
+    }));
+  }
+
+  plot.add_layout(new Bokeh.Span({
+    location: 0,
+    dimension: "height",
+    line_color: "#94a3b8",
+    line_width: 1,
+    line_alpha: 0.9
+  }));
+  plot.add_layout(new Bokeh.Span({
+    location: 0,
+    dimension: "width",
+    line_color: "#94a3b8",
+    line_width: 1,
+    line_alpha: 0.9
+  }));
+
+  if (renderers.length) {
+    const legend = new Bokeh.Legend({
+      items: renderers.map(item => new Bokeh.LegendItem({
+        label: { value: item.legendLabel },
+        renderers: [item.renderer]
+      })),
+      orientation: "horizontal",
+      location: "center"
+    });
+    plot.add_layout(legend, "below");
+  }
+
+  if (plot.below?.[0]) plot.below[0].axis_label = "長期増減率（%）：2006–2015年 → 2016–2026年";
+  if (plot.left?.[0]) plot.left[0].axis_label = "短期増減率（%）：2016–2020年 → 2021–2026年";
+  if (plot.title) plot.title.text_font_size = "16px";
+  Bokeh.Plotting.show(plot, $("bubblePlot"));
+
+  $("bubbleInfo").textContent =
+    `${eligible.length.toLocaleString()}項目が条件に該当し、${items.length.toLocaleString()}項目を表示。` +
+    `${eligible.length > maxItems ? ` 全体件数上位${maxItems.toLocaleString()}項目に制限しています。` : ""}` +
+    ` 基準期間の件数が0のため算出対象外：${undefinedCount.toLocaleString()}項目。`;
+  updateVisualSelectionSummary("bubble");
+}
+
+function valuesForAxis(row, axis) {
+  if (axis === "applicant") return row.__applicants;
+  if (axis === "year") return [row.__year || "年不明"];
+  if (axis === "class") return row.__classes.length ? row.__classes.map(c => `第${c}類`) : ["区分不明"];
+  return [""];
+}
+
+function crossSelectedValues(row, axis) {
+  const values = valuesForAxis(row, axis);
+  if (axis === "applicant") {
+    const selected = getVisualSelectedSet("cross", "applicant");
+    return values.filter(value => selected.has(String(value)));
+  }
+  if (axis === "class") {
+    const selected = getVisualSelectedSet("cross", "class");
+    return values.filter(value => {
+      const match = String(value).match(/(\d{1,2})/);
+      return match ? selected.has(String(Number(match[1]))) : false;
+    });
+  }
+  return values;
+}
+
+function addSelectedZeroEntries(totals, axis) {
+  if (axis === "class") {
+    const selected = getVisualSelectedSet("cross", "class");
+    [...selected]
+      .sort((a, b) => Number(a) - Number(b))
+      .forEach(key => {
+        const label = `第${Number(key)}類`;
+        if (!totals.has(label)) totals.set(label, 0);
+      });
+  }
+}
+
+function sortCrossEntries(entries, axis) {
+  if (axis === "class") {
+    return entries.sort((a, b) => {
+      const av = Number((a[0].match(/\d+/) || [Number.POSITIVE_INFINITY])[0]);
+      const bv = Number((b[0].match(/\d+/) || [Number.POSITIVE_INFINITY])[0]);
+      return av - bv || a[0].localeCompare(b[0], "ja");
+    });
+  }
+  if (axis === "year") {
+    return entries.sort((a, b) => {
+      const av = /^\d{4}$/.test(a[0]) ? Number(a[0]) : Number.POSITIVE_INFINITY;
+      const bv = /^\d{4}$/.test(b[0]) ? Number(b[0]) : Number.POSITIVE_INFINITY;
+      return av - bv || a[0].localeCompare(b[0], "ja");
+    });
+  }
+  return entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"));
+}
+
+function crossMatrixFromKeys(rows, cols, map) {
+  return rows.map(rv => cols.map(cv => map.get(rv + "\u0000" + cv) || 0));
+}
+
+function buildCrossTab() {
+  const rowAxis = $("rowAxis").value;
+  const colAxis = $("colAxis").value;
+  const topN = Math.max(5, Number($("crossTopN").value) || 100);
+  const map = new Map();
+  const rowTotals = new Map();
+  const colTotals = new Map();
+
+  for (const rec of state.filteredRows) {
+    const rvals = crossSelectedValues(rec, rowAxis);
+    const cvals = crossSelectedValues(rec, colAxis);
+    for (const rv of rvals) {
+      for (const cv of cvals) {
+        const key = rv + "\u0000" + cv;
+        map.set(key, (map.get(key) || 0) + 1);
+        rowTotals.set(rv, (rowTotals.get(rv) || 0) + 1);
+        colTotals.set(cv, (colTotals.get(cv) || 0) + 1);
+      }
+    }
+  }
+
+  addSelectedZeroEntries(rowTotals, rowAxis);
+  addSelectedZeroEntries(colTotals, colAxis);
+
+  const fullRows = sortCrossEntries([...rowTotals.entries()], rowAxis).map(([key]) => key);
+  const fullCols = sortCrossEntries([...colTotals.entries()], colAxis).map(([key]) => key);
+  const rows = fullRows.slice(0, topN);
+  const cols = fullCols.slice(0, topN);
+  const matrix = crossMatrixFromKeys(rows, cols, map);
+  const fullMatrix = crossMatrixFromKeys(fullRows, fullCols, map);
+
+  state.crossData = {
+    rows, cols, matrix,
+    fullRows, fullCols, fullMatrix,
+    rowAxis, colAxis
+  };
+  renderCrossTable();
+  updateVisualSelectionSummary("cross");
+}
+
+function axisLabel(axis) {
+  return axis === "applicant" ? "出願人" : axis === "class" ? "区分" : "出願年";
+}
+
+function crossHeatStyle(value, maxValue, diagonal = false) {
+  if (diagonal) {
+    return "background:#e5e7eb;color:#475569;";
+  }
+  if (value <= 0 || maxValue <= 0) {
+    return "background:rgba(219,234,254,.28);color:#64748b;";
+  }
+  const ratio = Math.sqrt(value / maxValue);
+  const alpha = 0.14 + ratio * 0.76;
+  const color = alpha >= 0.55 ? "#ffffff" : "#0f172a";
+  return `background:rgba(37,99,235,${alpha.toFixed(3)});color:${color};`;
+}
+
+function crossRecordMatches(row, axis, key) {
+  return valuesForAxis(row, axis).includes(key);
+}
+
+function displayAxisValue(axis, key) {
+  if (axis !== "class") return key;
+  const match = String(key).match(/(\d{1,2})/);
+  return match ? classLabel(match[1]) : key;
+}
+
+function openCrossDetails(rowAxis, rowKey, colAxis, colKey) {
+  const records = state.filteredRows.filter(row =>
+    crossRecordMatches(row, rowAxis, rowKey) && crossRecordMatches(row, colAxis, colKey)
+  );
+  const title = `${axisLabel(rowAxis)}「${displayAxisValue(rowAxis, rowKey)}」× ` +
+    `${axisLabel(colAxis)}「${displayAxisValue(colAxis, colKey)}」`;
+  showRecordDetails(title, records);
+}
+
+function bindCrossCellClicks(containerId = "crossTable", useFull = false) {
+  $(containerId).querySelectorAll("td[data-cross-cell]").forEach(cell => {
+    if (cell.dataset.clickable !== "true") return;
+    const open = () => {
+      const d = state.crossData;
+      if (!d) return;
+      const rows = useFull ? d.fullRows : d.rows;
+      const cols = useFull ? d.fullCols : d.cols;
+      const rowIndex = Number(cell.dataset.rowIndex);
+      const colIndex = Number(cell.dataset.colIndex);
+      openCrossDetails(d.rowAxis, rows[rowIndex], d.colAxis, cols[colIndex]);
+    };
+    cell.addEventListener("click", open);
+    cell.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+}
+
+function crossTableHtml(d, useFull = false) {
+  const rows = useFull ? d.fullRows : d.rows;
+  const cols = useFull ? d.fullCols : d.cols;
+  const matrix = useFull ? d.fullMatrix : d.matrix;
+  const colSums = cols.map((_, j) => matrix.reduce((sum, row) => sum + row[j], 0));
+  const grand = colSums.reduce((a, b) => a + b, 0);
+  const maxCell = Math.max(0, ...matrix.flat());
+  const classDiagonal = d.rowAxis === "class" && d.colAxis === "class";
+
+  let html = "<table><thead><tr>";
+  html += `<th>${escapeHtml(axisLabel(d.rowAxis))}＼${escapeHtml(axisLabel(d.colAxis))}</th>`;
+  html += cols.map(c => `<th>${escapeHtml(c)}</th>`).join("");
+  html += "<th>合計</th></tr></thead><tbody>";
+
+  rows.forEach((rowKey, i) => {
+    const sum = matrix[i].reduce((a, b) => a + b, 0);
+    html += `<tr><td>${escapeHtml(rowKey)}</td>`;
+    html += matrix[i].map((value, j) => {
+      const diagonal = classDiagonal && rowKey === cols[j];
+      const clickable = value > 0;
+      const keyboard = clickable ? ' role="button" tabindex="0"' : "";
+      const diagonalClass = diagonal ? " cross-diagonal" : "";
+      return `<td class="cross-cell${diagonalClass}" data-cross-cell="true" data-clickable="${clickable}" ` +
+        `data-row-index="${i}" data-col-index="${j}"${keyboard} ` +
+        `style="${crossHeatStyle(value, maxCell, diagonal)}" ` +
+        `title="${clickable ? `${value.toLocaleString()}件の該当案件を表示` : "該当案件なし"}">` +
+        `${value.toLocaleString()}</td>`;
+    }).join("");
+    html += `<td>${sum.toLocaleString()}</td></tr>`;
+  });
+
+  html += "<tr><td>合計</td>";
+  html += colSums.map(value => `<td>${value.toLocaleString()}</td>`).join("");
+  html += `<td>${grand.toLocaleString()}</td></tr>`;
+  html += "</tbody></table>";
+  return html;
+}
+
+function renderCrossTable() {
+  const d = state.crossData;
+  if (!d) return;
+  $("crossTable").innerHTML = crossTableHtml(d, false);
+  bindCrossCellClicks("crossTable", false);
+
+  const fullClassNote =
+    (d.rowAxis === "class" || d.colAxis === "class")
+      ? " 「拡大表示」では選択中の区分を全て表示します。"
+      : "";
+  $("crossInfo").textContent =
+    `行：${axisLabel(d.rowAxis)}（${d.rows.length}／${d.fullRows.length}項目）／` +
+    `列：${axisLabel(d.colAxis)}（${d.cols.length}／${d.fullCols.length}項目）。` +
+    "区分は複数区分を個別に展開して集計します。色が濃いほど件数が多く、件数セルをクリックすると該当案件を表示します。" +
+    fullClassNote;
+}
+
+function openCrossPopup() {
+  const d = state.crossData;
+  if (!d) {
+    buildCrossTab();
+  }
+  const current = state.crossData;
+  if (!current) return;
+
+  $("crossPopupTitle").textContent =
+    `可変クロス集計：${axisLabel(current.rowAxis)} × ${axisLabel(current.colAxis)}`;
+  $("crossPopupInfo").textContent =
+    `行 ${current.fullRows.length.toLocaleString()}項目 × 列 ${current.fullCols.length.toLocaleString()}項目を表示。` +
+    (current.rowAxis === "class" || current.colAxis === "class"
+      ? "区分軸は、表示対象として選択された区分を全て表示しています。"
+      : "");
+  $("crossPopupTable").innerHTML = crossTableHtml(current, true);
+  bindCrossCellClicks("crossPopupTable", true);
+  $("crossPopupDialog").showModal();
+}
+
+function csvEscape(v) {
+  const s = String(v ?? "");
+  return /[",\r\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+}
+
+function downloadCrossCsv() {
+  const d = state.crossData;
+  if (!d) return;
+  const lines = [];
+  lines.push([`${axisLabel(d.rowAxis)}＼${axisLabel(d.colAxis)}`, ...d.cols, "合計"].map(csvEscape).join(","));
+  d.rows.forEach((r, i) => {
+    const sum = d.matrix[i].reduce((a, b) => a + b, 0);
+    lines.push([r, ...d.matrix[i], sum].map(csvEscape).join(","));
+  });
+  const colSums = d.cols.map((_, j) => d.matrix.reduce((s, row) => s + row[j], 0));
+  lines.push(["合計", ...colSums, colSums.reduce((a, b) => a + b, 0)].map(csvEscape).join(","));
+
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `cross_${d.rowAxis}_${d.colAxis}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function crossCanvasFill(value, maxValue, diagonal) {
+  if (diagonal) return "#e5e7eb";
+  if (value <= 0 || maxValue <= 0) return "#eff6ff";
+  const ratio = Math.sqrt(value / maxValue);
+  const alpha = 0.14 + ratio * 0.76;
+  const base = [37, 99, 235];
+  const mix = channel => Math.round(255 * (1 - alpha) + channel * alpha);
+  return `rgb(${mix(base[0])},${mix(base[1])},${mix(base[2])})`;
+}
+
+function downloadCrossPng() {
+  const d = state.crossData;
+  if (!d) return;
+
+  const rows = d.fullRows;
+  const cols = d.fullCols;
+  const matrix = d.fullMatrix;
+  const maxCell = Math.max(0, ...matrix.flat());
+  const classDiagonal = d.rowAxis === "class" && d.colAxis === "class";
+  const maxCanvas = 12000;
+  const firstColWidth = Math.min(260, Math.max(150, Math.floor(maxCanvas * 0.08)));
+  const cellWidth = Math.max(18, Math.min(cols.length > 25 ? 46 : 90,
+    Math.floor((maxCanvas - firstColWidth) / Math.max(1, cols.length + 1))));
+  const rowHeight = Math.max(18, Math.min(30,
+    Math.floor((maxCanvas - 150) / Math.max(1, rows.length + 1))));
+  const headerHeight = cols.length > 15 ? 130 : 58;
+  const titleHeight = 46;
+  const width = firstColWidth + cellWidth * (cols.length + 1);
+  const height = titleHeight + headerHeight + rowHeight * (rows.length + 1);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "700 18px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    `TM Evolution 可変クロス集計：${axisLabel(d.rowAxis)} × ${axisLabel(d.colAxis)}`,
+    14, titleHeight / 2
+  );
+
+  const top = titleHeight;
+  ctx.fillStyle = "#eff6ff";
+  ctx.fillRect(0, top, width, headerHeight);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+
+  const drawGridCell = (x, y, w, h, fill) => {
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+  };
+  const fitText = (value, maxChars) => {
+    const s = String(value);
+    return s.length > maxChars ? `${s.slice(0, Math.max(1, maxChars - 1))}…` : s;
+  };
+
+  drawGridCell(0, top, firstColWidth, headerHeight, "#eff6ff");
+  ctx.save();
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "700 12px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(`${axisLabel(d.rowAxis)}＼${axisLabel(d.colAxis)}`, 8, top + headerHeight / 2);
+  ctx.restore();
+
+  cols.forEach((col, j) => {
+    const x = firstColWidth + j * cellWidth;
+    drawGridCell(x, top, cellWidth, headerHeight, "#eff6ff");
+    ctx.save();
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "700 10px sans-serif";
+    if (cols.length > 15) {
+      ctx.translate(x + cellWidth / 2, top + headerHeight - 6);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "left";
+      ctx.fillText(fitText(col, 22), 0, 0);
+    } else {
+      ctx.textAlign = "center";
+      ctx.fillText(fitText(col, 12), x + cellWidth / 2, top + headerHeight / 2);
+    }
+    ctx.restore();
+  });
+
+  const totalX = firstColWidth + cols.length * cellWidth;
+  drawGridCell(totalX, top, cellWidth, headerHeight, "#eff6ff");
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "700 11px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("合計", totalX + cellWidth / 2, top + headerHeight / 2);
+
+  const colSums = cols.map((_, j) => matrix.reduce((sum, row) => sum + row[j], 0));
+
+  rows.forEach((rowKey, i) => {
+    const y = top + headerHeight + i * rowHeight;
+    drawGridCell(0, y, firstColWidth, rowHeight, "#ffffff");
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "700 10px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(fitText(rowKey, Math.max(12, Math.floor(firstColWidth / 7))), 7, y + rowHeight / 2);
+
+    matrix[i].forEach((value, j) => {
+      const x = firstColWidth + j * cellWidth;
+      const diagonal = classDiagonal && rowKey === cols[j];
+      const fill = crossCanvasFill(value, maxCell, diagonal);
+      drawGridCell(x, y, cellWidth, rowHeight, fill);
+      const ratio = maxCell > 0 ? Math.sqrt(value / maxCell) : 0;
+      ctx.fillStyle = !diagonal && ratio > 0.62 ? "#ffffff" : "#0f172a";
+      ctx.font = `${cellWidth < 28 ? 8 : 10}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(String(value), x + cellWidth / 2, y + rowHeight / 2);
+    });
+
+    const rowSum = matrix[i].reduce((a, b) => a + b, 0);
+    drawGridCell(totalX, y, cellWidth, rowHeight, "#f8fafc");
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "700 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(String(rowSum), totalX + cellWidth / 2, y + rowHeight / 2);
+  });
+
+  const totalY = top + headerHeight + rows.length * rowHeight;
+  drawGridCell(0, totalY, firstColWidth, rowHeight, "#f8fafc");
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "700 10px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("合計", 7, totalY + rowHeight / 2);
+
+  colSums.forEach((value, j) => {
+    const x = firstColWidth + j * cellWidth;
+    drawGridCell(x, totalY, cellWidth, rowHeight, "#f8fafc");
+    ctx.textAlign = "center";
+    ctx.fillText(String(value), x + cellWidth / 2, totalY + rowHeight / 2);
+  });
+  const grand = colSums.reduce((a, b) => a + b, 0);
+  drawGridCell(totalX, totalY, cellWidth, rowHeight, "#e2e8f0");
+  ctx.textAlign = "center";
+  ctx.fillText(String(grand), totalX + cellWidth / 2, totalY + rowHeight / 2);
+
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `cross_${d.rowAxis}_${d.colAxis}.png`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, "image/png");
+}
+
+function recordsForPoint(type, key) {
+  if (type === "applicant") return state.filteredRows.filter(r => r.__applicants.includes(key));
+  if (type === "class") return state.filteredRows.filter(r => r.__classes.includes(String(key)));
+  return [];
+}
+
+function showRecordDetails(title, records) {
+  $("detailTitle").textContent = `${title}：該当商標 ${records.length.toLocaleString()}件`;
+
+  const maxShow = 500;
+  const shown = records.slice(0, maxShow);
+  let html = "";
+  if (records.length > maxShow) {
+    html += `<p class="status">${records.length.toLocaleString()}件中、先頭${maxShow}件を表示しています。</p>`;
+  }
+  html += '<div class="table-wrap"><table class="detail-table"><thead><tr>' +
+    "<th>商標番号</th><th>商標</th><th>称呼</th><th>出願人</th><th>出願日</th><th>登録日</th><th>区分</th>" +
+    "</tr></thead><tbody>";
+
+  for (const r of shown) {
+    const no = escapeHtml(getTrademarkNo(r));
+    const url = safeUrl(r["文献URL"]);
+    const numberCell = url
+      ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${no}</a>`
+      : no;
+    html += "<tr>" +
+      `<td>${numberCell}</td>` +
+      `<td>${escapeHtml(r["商標(検索用)"])}</td>` +
+      `<td>${escapeHtml(getPronunciation(r))}</td>` +
+      `<td>${escapeHtml(r.__applicant)}</td>` +
+      `<td>${escapeHtml(r["出願日/国際登録日(事後指定日)"])}</td>` +
+      `<td>${escapeHtml(r["登録日"])}</td>` +
+      `<td>${escapeHtml(r.__classes.length ? r.__classes.map(classLabel).join("、") : "区分不明")}</td>` +
+      "</tr>";
+  }
+  html += "</tbody></table></div>";
+  $("detailBody").innerHTML = html;
+  $("detailDialog").showModal();
+}
+
+function openDetails(type, key) {
+  const records = recordsForPoint(type, key);
+  const label = type === "applicant" ? key : classLabel(key);
+  showRecordDetails(label, records);
+}
+
+function renderSummary(matrix) {
+  const uniqueApplicants = new Set(state.filteredRows.flatMap(r => r.__applicants)).size;
+  const uniqueClasses = new Set(state.filteredRows.flatMap(r => r.__classes)).size;
+  const years = uniqueSorted(state.filteredRows.map(r => r.__year), true);
+  const yearRange = years.length ? `${years[0]}–${years[years.length - 1]}` : "年情報なし";
+  const items = [
+    ["対象レコード", state.filteredRows.length.toLocaleString()],
+    ["出願人数", uniqueApplicants.toLocaleString()],
+    ["区分数", uniqueClasses.toLocaleString()],
+    ["分析対象出願人", matrix.applicants.length.toLocaleString()],
+    ["出願年範囲", yearRange]
+  ];
+  $("metrics").innerHTML = items.map(([name, value]) =>
+    `<div class="metric"><div class="value">${escapeHtml(value)}</div><div class="name">${escapeHtml(name)}</div></div>`
+  ).join("");
+}
+
+async function runAnalysis() {
+  try {
+    setLoading(true, "分析を計算中…");
+    await new Promise(resolve => setTimeout(resolve, 30));
+    filterRows();
+    if (!state.filteredRows.length) throw new Error("指定した年範囲に該当するデータがありません。");
+
+    const matrix = buildApplicantClassMatrix(state.filteredRows);
+    state.matrix = matrix;
+    syncVisualSelections();
+    renderSummary(matrix);
+    renderApplicantRankings();
+    renderCA(matrix);
+    populateBubbleApplicantOptions();
+    renderBubbleChart();
+    buildCrossTab();
+
+    ["summaryCard", "rankingCard", "caCard", "bubbleCard", "crossCard"].forEach(id => $(id).classList.remove("hidden"));
+  } catch (err) {
+    alert(err.message || String(err));
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function handleFile(file) {
+  try {
+    setLoading(true, "ファイルを読み込み中…");
+    const rows = await readFile(file);
+    state.rows = rows;
+    state.filteredRows = rows.slice();
+    resetApplicantMerges();
+    resetVisualSelections();
+    state.rankingSelections = ["", "", ""];
+    state.rankingSorts = ["count", "count", "count"];
+    state.rankingInitialized = false;
+    state.pcaResult = null;
+    initializeYearControls();
+    $("analysisControls").classList.remove("hidden");
+    $("nameMergeCard").classList.remove("hidden");
+    ["summaryCard", "rankingCard", "caCard", "bubbleCard", "crossCard"].forEach(id => $(id).classList.add("hidden"));
+
+    const invalidYear = rows.filter(r => !r.__year).length;
+    const invalidClass = rows.filter(r => !r.__classes.length).length;
+    setStatus(
+      `${file.name} を読み込みました。\n` +
+      `有効レコード：${rows.length.toLocaleString()}件` +
+      `／出願年を取得できない行：${invalidYear.toLocaleString()}件` +
+      `／区分を取得できない行：${invalidClass.toLocaleString()}件`,
+      "ok"
+    );
+  } catch (err) {
+    state.rows = [];
+    setStatus(err.message || String(err), "error");
+  } finally {
+    setLoading(false);
+  }
+}
+
+$("fileInput").addEventListener("change", e => {
+  const file = e.target.files?.[0];
+  if (file) handleFile(file);
+});
+
+
+
+$("runBtn").addEventListener("click", runAnalysis);
+$("applicantSearch").addEventListener("input", renderApplicantMergeUI);
+$("applicantSort").addEventListener("change", renderApplicantMergeUI);
+$("selectSimilarBtn").addEventListener("click", selectSimilarApplicants);
+$("mergeSelectedBtn").addEventListener("click", mergeSelectedApplicants);
+$("clearApplicantSelectionBtn").addEventListener("click", () => {
+  state.selectedApplicants.clear();
+  $("canonicalApplicantName").value = "";
+  renderApplicantMergeUI();
+});
+$("clearAllMergesBtn").addEventListener("click", () => {
+  if (!state.applicantAliases.size) return;
+  state.applicantAliases.clear();
+  state.selectedApplicants.clear();
+  applyApplicantAliases();
+  renderApplicantMergeUI();
+  refreshAnalysisAfterApplicantMerge();
+});
+document.querySelectorAll(".visual-select-open").forEach(button => {
+  button.addEventListener("click", () => openVisualSelectionDialog(button.dataset.visualChart));
+});
+$("visualApplicantTab").addEventListener("click", () => setVisualDialogType("applicant"));
+$("visualClassTab").addEventListener("click", () => setVisualDialogType("class"));
+$("visualSelectionSearch").addEventListener("input", renderVisualSelectionDialog);
+$("visualSelectFilteredBtn").addEventListener("click", () => updateVisualDraftForItems("filtered"));
+$("visualClearFilteredBtn").addEventListener("click", () => updateVisualDraftForItems("clearFiltered"));
+$("visualSelectAllBtn").addEventListener("click", () => updateVisualDraftForItems("all"));
+$("visualClearAllBtn").addEventListener("click", () => updateVisualDraftForItems("clearAll"));
+$("applyVisualSelectionBtn").addEventListener("click", applyVisualSelection);
+$("cancelVisualSelectionBtn").addEventListener("click", () => $("visualSelectionDialog").close());
+$("closeVisualSelectionBtn").addEventListener("click", () => $("visualSelectionDialog").close());
+$("visualSelectionDialog").addEventListener("click", e => {
+  if (e.target === $("visualSelectionDialog")) $("visualSelectionDialog").close();
+});
+[1, 2, 3].forEach((slot, index) => {
+  $(`rankingApplicant${slot}`).addEventListener("change", () => {
+    state.rankingSelections[index] = $(`rankingApplicant${slot}`).value;
+    renderApplicantRankings();
+  });
+  $(`rankingSort${slot}`).addEventListener("change", () => {
+    state.rankingSorts[index] = $(`rankingSort${slot}`).value || "count";
+    renderApplicantRankings();
+  });
+});
+$("caUpdateBtn").addEventListener("click", () => {
+  if (!state.matrix) return;
+  renderCA(state.matrix);
+});
+$("bubbleMode").addEventListener("change", () => {
+  $("bubbleFilter").value = "";
+  $("bubbleFilter").placeholder = "出願人名の一部を入力";
+  renderBubbleChart();
+});
+$("bubbleFilter").addEventListener("input", renderBubbleChart);
+$("bubbleMinCount").addEventListener("change", renderBubbleChart);
+$("bubbleMaxItems").addEventListener("change", renderBubbleChart);
+$("bubbleUpdateBtn").addEventListener("click", renderBubbleChart);
+$("crossBtn").addEventListener("click", buildCrossTab);
+$("downloadCrossBtn").addEventListener("click", downloadCrossCsv);
+$("openCrossPopupBtn").addEventListener("click", openCrossPopup);
+$("downloadCrossPngBtn").addEventListener("click", downloadCrossPng);
+$("closeCrossPopupBtn").addEventListener("click", () => $("crossPopupDialog").close());
+$("crossPopupDialog").addEventListener("click", event => {
+  if (event.target === $("crossPopupDialog")) $("crossPopupDialog").close();
+});
+$("closeDialogBtn").addEventListener("click", () => $("detailDialog").close());
+$("detailDialog").addEventListener("click", e => {
+  if (e.target === $("detailDialog")) $("detailDialog").close();
+});
+
+</script>
+</body>
+</html>
