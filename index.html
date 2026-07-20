@@ -41,10 +41,12 @@
     }
     header h1 { margin: 0 0 8px; }
     .brand-title {
-      display: flex;
+      display: inline-grid;
+      grid-template-columns: auto auto;
       align-items: baseline;
       justify-content: flex-start;
-      gap: 14px;
+      column-gap: 14px;
+      row-gap: 7px;
       line-height: 1;
       white-space: nowrap;
     }
@@ -85,8 +87,10 @@
         0 2px 18px rgba(255, 255, 255, 0.08);
     }
     .brand-version {
-      align-self: center;
-      margin-left: 2px;
+      grid-column: 1 / -1;
+      justify-self: start;
+      align-self: auto;
+      margin-left: 0;
       padding: 4px 8px;
       border: 1px solid rgba(255, 255, 255, 0.28);
       border-radius: 999px;
@@ -98,7 +102,7 @@
       white-space: nowrap;
     }
     @media (max-width: 560px) {
-      .brand-title { gap: 10px; }
+      .brand-title { column-gap: 10px; }
       .brand-evolution { letter-spacing: 0.07em; }
     }
     header p { margin: 0; opacity: 0.86; }
