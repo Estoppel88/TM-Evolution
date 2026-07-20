@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TM Evolution ver.1.0</title>
+  <title>TradeMark Evolution ver.1.0</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Parisienne&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tektur:wght@500;600;700;800&family=Parisienne&display=swap" rel="stylesheet">
 
   <!-- グラフ描画用（BokehJS） -->
   <script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.9.1.min.js"></script>
@@ -49,12 +49,12 @@
       white-space: nowrap;
     }
     .brand-tm {
-      font-family: "Orbitron", sans-serif;
+      font-family: "Tektur", sans-serif;
       color: #f8fbff;
       font-size: clamp(42px, 5vw, 64px);
-      font-weight: 900;
-      letter-spacing: -0.03em;
-      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.015em;
+      text-transform: none;
       text-shadow:
         0 0 12px rgba(125, 211, 252, 0.22),
         0 4px 18px rgba(0, 0, 0, 0.28);
@@ -580,7 +580,7 @@
 
 <body>
 <header>
-  <h1 class="brand-title"><span class="brand-tm">TM</span><span class="brand-evolution">Evolution</span><span class="brand-version">ver.1.0</span></h1>
+  <h1 class="brand-title"><span class="brand-tm">TradeMark</span><span class="brand-evolution">Evolution</span><span class="brand-version">ver.1.0</span></h1>
   <p>CSVをブラウザ内で分析し、出願人ランキング・増減率・対応分析・クロス集計などを表示します。</p>
 </header>
 
@@ -3345,7 +3345,7 @@ function downloadCrossPng() {
   ctx.font = "700 18px sans-serif";
   ctx.textBaseline = "middle";
   ctx.fillText(
-    `TM Evolution 可変クロス集計：${axisLabel(d.rowAxis)} × ${axisLabel(d.colAxis)}`,
+    `TradeMark Evolution 可変クロス集計：${axisLabel(d.rowAxis)} × ${axisLabel(d.colAxis)}`,
     14, titleHeight / 2
   );
 
